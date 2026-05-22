@@ -12,6 +12,14 @@ function getKeyId(rowIndex: number, keyIndex: number) {
   return `${rowIndex}-${keyIndex}`;
 }
 
+function getOrdinal(value: number) {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const lastTwoDigits = value % 100;
+  const suffix = suffixes[(lastTwoDigits - 20) % 10] ?? suffixes[lastTwoDigits] ?? suffixes[0];
+
+  return `${value}${suffix}`;
+}
+
 function clonePreset(preset: KeyboardPreset): KeyboardPreset {
   return {
     ...preset,
@@ -53,17 +61,43 @@ function App() {
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
+  const keyLabelCounts = new Map<string, number>();
+
+  visiblePreset?.rows.forEach((row) => {
+    row.forEach((key) => {
+      if (!key.spacer) {
+        keyLabelCounts.set(key.label, (keyLabelCounts.get(key.label) ?? 0) + 1);
+      }
+    });
+  });
+
   const keyOptions =
     visiblePreset?.rows.flatMap((row, rowIndex) =>
       row.flatMap((key, keyIndex) =>
         key.spacer
           ? []
-          : [
-              {
-                id: getKeyId(rowIndex, keyIndex),
-                label: `${key.label || 'Blank key'} (${rowIndex + 1}, ${keyIndex + 1})`,
-              },
-            ],
+          : (() => {
+              const baseLabel = key.label || 'Blank key';
+              const duplicateCount = keyLabelCounts.get(key.label) ?? 0;
+              const matchingKeysBeforeThisOne = visiblePreset.rows
+                .slice(0, rowIndex + 1)
+                .flatMap((currentRow, currentRowIndex) =>
+                  currentRow
+                    .slice(0, currentRowIndex === rowIndex ? keyIndex + 1 : undefined)
+                    .filter((currentKey) => !currentKey.spacer && currentKey.label === key.label),
+                ).length;
+              const duplicateLabel =
+                duplicateCount === 2
+                  ? `${matchingKeysBeforeThisOne === 1 ? 'Left' : 'Right'} ${baseLabel}`
+                  : `${getOrdinal(matchingKeysBeforeThisOne)} ${baseLabel}`;
+
+              return [
+                {
+                  id: getKeyId(rowIndex, keyIndex),
+                  label: duplicateCount > 1 ? duplicateLabel : baseLabel,
+                },
+              ];
+            })(),
       ),
     ) ?? [];
   const keyLabels = new Map(keyOptions.map((keyOption) => [keyOption.id, keyOption.label]));
