@@ -436,6 +436,7 @@ function App() {
           <div className="keyboard-row" key={rowIndex}>
             {row.map((key, keyIndex) => {
               const width = `${(key.width ?? 1) * 64}px`;
+              const height = `${(key.height ?? 1) * 64}px`;
               const keyId = getKeyId(rowIndex, keyIndex);
               const isSelected =
                 selectedKey?.rowIndex === rowIndex && selectedKey.keyIndex === keyIndex;
@@ -459,7 +460,7 @@ function App() {
                 <div
                   className={`key ${mode === 'edit' ? 'key-editable' : ''} ${isSelected ? 'key-selected' : ''} ${isHighlighted ? 'key-combo-highlight' : ''}`}
                   key={`${key.label}-${rowIndex}-${keyIndex}`}
-                  style={{ width }}
+                  style={{ width, height }}
                   data-key-position={keyId}
                   role={mode === 'edit' ? 'button' : undefined}
                   tabIndex={mode === 'edit' ? 0 : undefined}
