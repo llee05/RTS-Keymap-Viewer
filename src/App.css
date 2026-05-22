@@ -12,11 +12,19 @@
   gap: 12px;
 }
 
+.preset-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+  margin-bottom: 24px;
+}
+
 .preset-picker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
 .preset-picker label,
@@ -33,7 +41,12 @@
   padding: 8px 10px;
 }
 
-.preset-picker button {
+.mode-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-controls button {
   border: 1px solid #60a5fa;
   border-radius: 6px;
   background: #2563eb;
@@ -43,8 +56,42 @@
   padding: 8px 12px;
 }
 
-.preset-picker button:hover {
+.mode-controls button:hover {
   background: #1d4ed8;
+}
+
+.mode-controls .secondary-button {
+  border-color: #6b7280;
+  background: #374151;
+}
+
+.mode-controls .secondary-button:hover {
+  background: #4b5563;
+}
+
+.preset-editor {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.preset-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #d1d5db;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.preset-editor input {
+  width: min(280px, 80vw);
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  background: #1f2937;
+  color: white;
+  padding: 8px 10px;
 }
 
 .database-status {
@@ -74,9 +121,64 @@
   font-weight: 600;
 }
 
+.key span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .key:hover {
   background: #374151;
   border-color: #60a5fa;
+}
+
+.key small {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  left: 6px;
+  overflow: hidden;
+  color: #bfdbfe;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key-editable {
+  align-items: flex-start;
+  padding-top: 12px;
+}
+
+.key-editable:hover,
+.key-selected {
+  border-color: #34d399;
+}
+
+.key-selected {
+  background: #0f3f3a;
+  z-index: 20;
+}
+
+.key-editor {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  width: 220px;
+  min-height: 96px;
+  border: 1px solid #34d399;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #111827;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  padding: 10px;
+  resize: vertical;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  z-index: 30;
 }
 
 .tooltip {
