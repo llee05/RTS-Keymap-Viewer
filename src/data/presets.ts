@@ -12,6 +12,7 @@ export type Keybind = {
 
 export type KeyCombination = {
   keyId: string;
+  action: string;
 };
 
 export type KeyboardPreset = {

@@ -58,6 +58,7 @@ function App() {
   const [selectedKey, setSelectedKey] = useState<SelectedKey | null>(null);
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
   const [comboTargetKeyId, setComboTargetKeyId] = useState('');
+  const [comboAction, setComboAction] = useState('');
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
@@ -268,8 +269,9 @@ function App() {
 
   function addDraftCombination(rowIndex: number, keyIndex: number) {
     const selectedKeyId = getKeyId(rowIndex, keyIndex);
+    const trimmedAction = comboAction.trim();
 
-    if (!comboTargetKeyId || comboTargetKeyId === selectedKeyId) {
+    if (!comboTargetKeyId || !trimmedAction || comboTargetKeyId === selectedKeyId) {
       return;
     }
 
@@ -292,7 +294,7 @@ function App() {
 
           return {
             ...key,
-            combinations: [...combinations, { keyId: comboTargetKeyId }],
+            combinations: [...combinations, { keyId: comboTargetKeyId, action: trimmedAction }],
           };
         }),
       );
@@ -300,6 +302,37 @@ function App() {
       return { ...currentDraft, rows };
     });
     setComboTargetKeyId('');
+    setComboAction('');
+  }
+
+  function updateDraftCombinationAction(
+    rowIndex: number,
+    keyIndex: number,
+    keyId: string,
+    action: string,
+  ) {
+    setDraftPreset((currentDraft) => {
+      if (!currentDraft) {
+        return currentDraft;
+      }
+
+      const rows = currentDraft.rows.map((row, currentRowIndex) =>
+        row.map((key, currentKeyIndex) => {
+          if (currentRowIndex !== rowIndex || currentKeyIndex !== keyIndex) {
+            return key;
+          }
+
+          return {
+            ...key,
+            combinations: key.combinations?.map((combination) =>
+              combination.keyId === keyId ? { ...combination, action } : combination,
+            ),
+          };
+        }),
+      );
+
+      return { ...currentDraft, rows };
+    });
   }
 
   function removeDraftCombination(rowIndex: number, keyIndex: number, keyId: string) {
@@ -436,6 +469,7 @@ function App() {
                     if (mode === 'edit') {
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
+                      setComboAction('');
                     }
                   }}
                   onKeyDown={(event) => {
@@ -443,6 +477,7 @@ function App() {
                       event.preventDefault();
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
+                      setComboAction('');
                     }
                   }}
                 >
@@ -477,9 +512,17 @@ function App() {
                                 ))}
                               </select>
                             </label>
+                            <label>
+                              Action
+                              <input
+                                value={comboAction}
+                                placeholder="Action for this combination"
+                                onChange={(event) => setComboAction(event.target.value)}
+                              />
+                            </label>
                             <button
                               type="button"
-                              disabled={!comboTargetKeyId}
+                              disabled={!comboTargetKeyId || !comboAction.trim()}
                               onClick={() => addDraftCombination(rowIndex, keyIndex)}
                             >
                               Add combination
@@ -491,6 +534,21 @@ function App() {
                                     <span>
                                       {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
                                     </span>
+                                    <input
+                                      value={combination.action ?? ''}
+                                      placeholder="Action"
+                                      aria-label={`${key.label} + ${
+                                        keyLabels.get(combination.keyId) ?? combination.keyId
+                                      } action`}
+                                      onChange={(event) =>
+                                        updateDraftCombinationAction(
+                                          rowIndex,
+                                          keyIndex,
+                                          combination.keyId,
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
                                     <button
                                       type="button"
                                       aria-label={`Remove ${key.label} combination`}
@@ -517,6 +575,7 @@ function App() {
                       {key.combinations?.map((combination) => (
                         <p className="combo-tooltip" key={combination.keyId}>
                           {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
+                          {combination.action ? `: ${combination.action}` : ': No action specified'}
                         </p>
                       ))}
                     </div>

@@ -214,11 +214,13 @@
   font-weight: 700;
 }
 
-.combo-editor select {
+.combo-editor select,
+.combo-editor input {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background: white;
   color: #111827;
+  font: inherit;
   padding: 7px;
 }
 
@@ -247,9 +249,9 @@
 }
 
 .combo-editor li {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(70px, 0.8fr) minmax(90px, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   color: #111827;
   font-size: 0.78rem;
@@ -258,6 +260,12 @@
 .combo-editor li span {
   min-width: 0;
   white-space: normal;
+}
+
+.combo-editor li input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .combo-editor li button {
