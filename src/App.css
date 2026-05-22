@@ -33,6 +33,26 @@
   padding: 8px 10px;
 }
 
+.preset-picker button {
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 12px;
+}
+
+.preset-picker button:hover {
+  background: #1d4ed8;
+}
+
+.database-status {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin: -12px 0 24px;
+}
+
 .keyboard-row {
   display: flex;
   gap: 12px;
