@@ -8,10 +8,20 @@ type SelectedKey = {
   keyIndex: number;
 };
 
+function getKeyId(rowIndex: number, keyIndex: number) {
+  return `${rowIndex}-${keyIndex}`;
+}
+
 function clonePreset(preset: KeyboardPreset): KeyboardPreset {
   return {
     ...preset,
-    rows: preset.rows.map((row) => row.map((key) => ({ ...key, hotkeys: [...key.hotkeys] }))),
+    rows: preset.rows.map((row) =>
+      row.map((key) => ({
+        ...key,
+        hotkeys: [...key.hotkeys],
+        combinations: key.combinations?.map((combination) => ({ ...combination })),
+      })),
+    ),
   };
 }
 
@@ -38,9 +48,46 @@ function App() {
   const [mode, setMode] = useState<AppMode>('view');
   const [draftPreset, setDraftPreset] = useState<KeyboardPreset | null>(null);
   const [selectedKey, setSelectedKey] = useState<SelectedKey | null>(null);
+  const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
+  const [comboTargetKeyId, setComboTargetKeyId] = useState('');
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
+  const keyOptions =
+    visiblePreset?.rows.flatMap((row, rowIndex) =>
+      row.flatMap((key, keyIndex) =>
+        key.spacer
+          ? []
+          : [
+              {
+                id: getKeyId(rowIndex, keyIndex),
+                label: `${key.label || 'Blank key'} (${rowIndex + 1}, ${keyIndex + 1})`,
+              },
+            ],
+      ),
+    ) ?? [];
+  const keyLabels = new Map(keyOptions.map((keyOption) => [keyOption.id, keyOption.label]));
+  const highlightedKeyIds = new Set<string>();
+
+  if (hoveredKeyId && visiblePreset) {
+    highlightedKeyIds.add(hoveredKeyId);
+
+    visiblePreset.rows.forEach((row, rowIndex) => {
+      row.forEach((key, keyIndex) => {
+        const currentKeyId = getKeyId(rowIndex, keyIndex);
+
+        key.combinations?.forEach((combination) => {
+          if (currentKeyId === hoveredKeyId) {
+            highlightedKeyIds.add(combination.keyId);
+          }
+
+          if (combination.keyId === hoveredKeyId) {
+            highlightedKeyIds.add(currentKeyId);
+          }
+        });
+      });
+    });
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -67,6 +114,34 @@ function App() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !selectedKey) {
+      return;
+    }
+
+    const currentSelectedKey = selectedKey;
+
+    function closeEditorOnOutsideClick(event: PointerEvent) {
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+
+      const selectedKeyElement = event.target.closest(
+        `[data-key-position="${currentSelectedKey.rowIndex}-${currentSelectedKey.keyIndex}"]`,
+      );
+
+      if (!selectedKeyElement) {
+        setSelectedKey(null);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeEditorOnOutsideClick, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', closeEditorOnOutsideClick, true);
+    };
+  }, [mode, selectedKey]);
 
   function createPreset() {
     if (!activePreset) {
@@ -157,6 +232,65 @@ function App() {
     });
   }
 
+  function addDraftCombination(rowIndex: number, keyIndex: number) {
+    const selectedKeyId = getKeyId(rowIndex, keyIndex);
+
+    if (!comboTargetKeyId || comboTargetKeyId === selectedKeyId) {
+      return;
+    }
+
+    setDraftPreset((currentDraft) => {
+      if (!currentDraft) {
+        return currentDraft;
+      }
+
+      const rows = currentDraft.rows.map((row, currentRowIndex) =>
+        row.map((key, currentKeyIndex) => {
+          if (currentRowIndex !== rowIndex || currentKeyIndex !== keyIndex) {
+            return key;
+          }
+
+          const combinations = key.combinations ?? [];
+
+          if (combinations.some((combination) => combination.keyId === comboTargetKeyId)) {
+            return key;
+          }
+
+          return {
+            ...key,
+            combinations: [...combinations, { keyId: comboTargetKeyId }],
+          };
+        }),
+      );
+
+      return { ...currentDraft, rows };
+    });
+    setComboTargetKeyId('');
+  }
+
+  function removeDraftCombination(rowIndex: number, keyIndex: number, keyId: string) {
+    setDraftPreset((currentDraft) => {
+      if (!currentDraft) {
+        return currentDraft;
+      }
+
+      const rows = currentDraft.rows.map((row, currentRowIndex) =>
+        row.map((key, currentKeyIndex) => {
+          if (currentRowIndex !== rowIndex || currentKeyIndex !== keyIndex) {
+            return key;
+          }
+
+          return {
+            ...key,
+            combinations: key.combinations?.filter((combination) => combination.keyId !== keyId),
+          };
+        }),
+      );
+
+      return { ...currentDraft, rows };
+    });
+  }
+
   return (
     <main className="app">
       <h1>RTS Keymap Viewer</h1>
@@ -235,8 +369,15 @@ function App() {
           <div className="keyboard-row" key={rowIndex}>
             {row.map((key, keyIndex) => {
               const width = `${(key.width ?? 1) * 64}px`;
+              const keyId = getKeyId(rowIndex, keyIndex);
               const isSelected =
                 selectedKey?.rowIndex === rowIndex && selectedKey.keyIndex === keyIndex;
+              const isHighlighted = highlightedKeyIds.has(keyId);
+              const availableComboTargets = keyOptions.filter(
+                (keyOption) =>
+                  keyOption.id !== keyId &&
+                  !key.combinations?.some((combination) => combination.keyId === keyOption.id),
+              );
 
               if (key.spacer) {
                 return (
@@ -249,20 +390,25 @@ function App() {
 
               return (
                 <div
-                  className={`key ${mode === 'edit' ? 'key-editable' : ''} ${isSelected ? 'key-selected' : ''}`}
+                  className={`key ${mode === 'edit' ? 'key-editable' : ''} ${isSelected ? 'key-selected' : ''} ${isHighlighted ? 'key-combo-highlight' : ''}`}
                   key={`${key.label}-${rowIndex}-${keyIndex}`}
                   style={{ width }}
+                  data-key-position={keyId}
                   role={mode === 'edit' ? 'button' : undefined}
                   tabIndex={mode === 'edit' ? 0 : undefined}
+                  onMouseEnter={() => setHoveredKeyId(keyId)}
+                  onMouseLeave={() => setHoveredKeyId((currentKeyId) => (currentKeyId === keyId ? null : currentKeyId))}
                   onClick={() => {
                     if (mode === 'edit') {
                       setSelectedKey({ rowIndex, keyIndex });
+                      setComboTargetKeyId('');
                     }
                   }}
                   onKeyDown={(event) => {
                     if (mode === 'edit' && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault();
                       setSelectedKey({ rowIndex, keyIndex });
+                      setComboTargetKeyId('');
                     }
                   }}
                 >
@@ -272,17 +418,60 @@ function App() {
                     <>
                       <small>{key.hotkeys.filter(Boolean)[0] ?? 'Unassigned'}</small>
                       {isSelected && (
-                        <textarea
-                          aria-label={`${key.label} hotkeys`}
-                          className="key-editor"
-                          autoFocus
-                          value={key.hotkeys.join('\n')}
-                          placeholder="One hotkey per line"
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) =>
-                            updateDraftHotkeys(rowIndex, keyIndex, event.target.value)
-                          }
-                        />
+                        <div className="key-editor" onClick={(event) => event.stopPropagation()}>
+                          <textarea
+                            aria-label={`${key.label} hotkeys`}
+                            autoFocus
+                            value={key.hotkeys.join('\n')}
+                            placeholder="One hotkey per line"
+                            onChange={(event) =>
+                              updateDraftHotkeys(rowIndex, keyIndex, event.target.value)
+                            }
+                          />
+                          <div className="combo-editor">
+                            <label>
+                              Combination key
+                              <select
+                                value={comboTargetKeyId}
+                                onChange={(event) => setComboTargetKeyId(event.target.value)}
+                              >
+                                <option value="">Choose key</option>
+                                {availableComboTargets.map((keyOption) => (
+                                  <option key={keyOption.id} value={keyOption.id}>
+                                    {keyOption.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              type="button"
+                              disabled={!comboTargetKeyId}
+                              onClick={() => addDraftCombination(rowIndex, keyIndex)}
+                            >
+                              Add combination
+                            </button>
+                            {(key.combinations?.length ?? 0) > 0 && (
+                              <ul>
+                                {key.combinations?.map((combination) => (
+                                  <li key={combination.keyId}>
+                                    <span>
+                                      {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove ${key.label} combination`}
+                                      onClick={() =>
+                                        removeDraftCombination(rowIndex, keyIndex, combination.keyId)
+                                      }
+                                    >
+                                      Remove
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </>
                   ) : (
@@ -290,6 +479,11 @@ function App() {
                       <strong>{key.label}</strong>
                       {key.hotkeys.map((hotkey) => (
                         <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
+                      ))}
+                      {key.combinations?.map((combination) => (
+                        <p className="combo-tooltip" key={combination.keyId}>
+                          {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
+                        </p>
                       ))}
                     </div>
                   )}

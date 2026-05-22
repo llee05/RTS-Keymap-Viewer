@@ -5,8 +5,13 @@ import { defaultPresets } from "./defaultPresets";
 export type Keybind = {
   label: string;
   hotkeys: string[];
+  combinations?: KeyCombination[];
   width?: number;
   spacer?: boolean;
+};
+
+export type KeyCombination = {
+  keyId: string;
 };
 
 export type KeyboardPreset = {

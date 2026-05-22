@@ -132,6 +132,12 @@
   border-color: #60a5fa;
 }
 
+.key-combo-highlight {
+  background: #4c1d95;
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.28);
+}
+
 .key small {
   position: absolute;
   right: 6px;
@@ -166,8 +172,7 @@
   position: absolute;
   top: 72px;
   left: 0;
-  width: 220px;
-  min-height: 96px;
+  width: 260px;
   border: 1px solid #34d399;
   border-radius: 8px;
   background: #f9fafb;
@@ -176,9 +181,90 @@
   font-size: 0.85rem;
   line-height: 1.35;
   padding: 10px;
-  resize: vertical;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   z-index: 30;
+}
+
+.key-editor textarea {
+  width: 100%;
+  min-height: 92px;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #111827;
+  font: inherit;
+  padding: 8px;
+  resize: vertical;
+}
+
+.combo-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.combo-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.combo-editor select {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #111827;
+  padding: 7px;
+}
+
+.combo-editor button {
+  border: 1px solid #059669;
+  border-radius: 6px;
+  background: #10b981;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 7px 9px;
+}
+
+.combo-editor button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.combo-editor ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.combo-editor li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #111827;
+  font-size: 0.78rem;
+}
+
+.combo-editor li span {
+  min-width: 0;
+  white-space: normal;
+}
+
+.combo-editor li button {
+  flex: 0 0 auto;
+  border-color: #9ca3af;
+  background: #4b5563;
+  padding: 4px 7px;
 }
 
 .tooltip {
@@ -201,4 +287,9 @@
 
 .tooltip p {
   margin: 6px 0 0;
+}
+
+.combo-tooltip {
+  color: #7c3aed;
+  font-weight: 700;
 }
