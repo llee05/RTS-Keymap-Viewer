@@ -1,104 +1,36 @@
 import './App.css';
-
-type Keybind = {
-  label: string;
-  hotkeys: string[];
-  width?: number;
-  spacer?: boolean;
-};
-
-// each row should be 15 width
-const keyRows: Keybind[][] = [
-  [
-    { label: '`', hotkeys: ['Scout'], },
-    { label: '1', hotkeys: ['Build Barracks'] },
-    { label: '2', hotkeys: ['Move Camera Up'] },
-    { label: '3', hotkeys: ['Select Economy Building'] },
-    { label: '4', hotkeys: ['Repair'] },
-    { label: '5', hotkeys: ['Camera Modifier'], },
-    { label: '6', hotkeys: ['Camera Modifier'], },
-    { label: '7', hotkeys: ['Camera Modifier'], },
-    { label: '8', hotkeys: ['Camera Modifier'], },
-    { label: '9', hotkeys: ['Camera Modifier'], },
-    { label: '0', hotkeys: ['Camera Modifier'], },
-    { label: '-', hotkeys: ['Camera Modifier'], },
-    { label: '=', hotkeys: ['Camera Modifier'], },
-    { label: 'Backspace', hotkeys: [''], width: 2 },
-  ],
-  [
-    { label: 'Tab', hotkeys: ['Cycle Selection'], width: 1.5 },
-    { label: 'Q', hotkeys: ['QQ: Build House', 
-                            'QW: Build Mill', 
-                            'QE: Build Lumber Camp',
-                            'QR: Build Mining Camp'] },
-    { label: 'W', hotkeys: ['Move Camera Up'] },
-    { label: 'E', hotkeys: ['Select Economy Building'] },
-    { label: 'R', hotkeys: [''] },
-    { label: 'T', hotkeys: ['Technology'] },
-    { label: 'Y', hotkeys: [''] },
-    { label: 'U', hotkeys: ['University'] },
-    { label: 'I', hotkeys: [''] },
-    { label: 'O', hotkeys: [''] },
-    { label: 'P', hotkeys: [''] },
-    { label: '[', hotkeys: [''] },
-    { label: ']', hotkeys: [''] },
-    { label: '\\', hotkeys: [''], width: 1.5},
-  ],
-  [
-    { label: 'Caps Lock', hotkeys: ['Toggle Grid Mode'], width: 1.85 },
-    { label: 'A', hotkeys: ['Attack Move'] },
-    { label: 'S', hotkeys: ['Stop Unit'] },
-    { label: 'D', hotkeys: ['Delete Unit'] },
-    { label: 'F', hotkeys: ['Enter Building'] },
-    { label: 'G', hotkeys: ['Garrison'] },
-    { label: 'H', hotkeys: ['Home Town Center', 'HH: Select All Town Center'] },
-    { label: 'J', hotkeys: [''] },
-    { label: 'K', hotkeys: [''] },
-    { label: 'L', hotkeys: [''] },
-    { label: ';', hotkeys: [''] },
-    { label: "'", hotkeys: [''] },
-    { label: 'Enter', hotkeys: [''], width: 2.35 },
-
-  ],
-  [
-    { label: 'Shift', hotkeys: ['Queue Command'], width: 2.7 },
-    { label: 'Z', hotkeys: ['Formation', 'ZZ: Select All Barracks'] },
-    { label: 'X', hotkeys: ['Formation', 'XX: Select All Archery Ranges'] },
-    { label: 'C', hotkeys: ['Formation', 'CC: Select All Stables'] },
-    { label: 'V', hotkeys: ['VV: Select All Siege Workshops'] },
-    { label: 'B', hotkeys: ['Remove One from Queue'] },
-    { label: 'N', hotkeys: ['Delete Entire Queue'] },
-    { label: 'M', hotkeys: ['Minimap Size'] },
-    { label: ',', hotkeys: ['Select All Military on Screen'] },
-    { label: '.', hotkeys: ['Formation'] },
-    { label: '/', hotkeys: ['Formation'] },
-    { label: 'Shift', hotkeys: ['Formation'], width: 2.7 },
-  ],
-  [
-    { label: 'Ctrl', hotkeys: ['Control Group Modifier'], },
-    { label: 'Fn', hotkeys: [''], },
-    { label: 'Super', hotkeys: [''], },
-    { label: 'Alt', hotkeys: [''], },
-    { label: 'Space', hotkeys: ['Jump to Attack Notification'], width: 8 },
-    { label: 'Alt', hotkeys: [''] },
-    { label: 'UP', hotkeys: [''] },
-    { label: 'Ctrl', hotkeys: [''] },
-  ],
-  [
-    { label: '', hotkeys: [], spacer: true, width: 13},
-    { label: 'LEFT', hotkeys: ['Move Camera Left'] },
-    { label: 'DOWN', hotkeys: ['Move Camera Down'] },
-    { label: 'RIGHT', hotkeys: ['Move Camera Right'] },
-  ],
-];
+import { useMemo, useState } from 'react';
+import { loadPresets } from './data/presets';
 
 function App() {
+  const [activePresetId, setActivePresetId] = useState('aoe4-default');
+  const presets = useMemo(() => loadPresets(), []);
+  const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
+
   return (
     <main className="app">
       <h1>RTS Keymap Viewer</h1>
 
+      {activePreset && (
+        <div className="preset-picker">
+          <label htmlFor="preset">Preset</label>
+          <select
+            id="preset"
+            value={activePreset.id}
+            onChange={(event) => setActivePresetId(event.target.value)}
+          >
+            {presets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+          <span>{activePreset.game}</span>
+        </div>
+      )}
+
       <div className="keyboard">
-        {keyRows.map((row, rowIndex) => (
+        {activePreset?.rows.map((row, rowIndex) => (
           <div className="keyboard-row" key={rowIndex}>
             {row.map((key, keyIndex) => {
               const width = `${(key.width ?? 1) * 64}px`;

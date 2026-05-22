@@ -12,6 +12,27 @@
   gap: 12px;
 }
 
+.preset-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.preset-picker label,
+.preset-picker span {
+  color: #d1d5db;
+  font-size: 0.9rem;
+}
+
+.preset-picker select {
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  background: #1f2937;
+  color: white;
+  padding: 8px 10px;
+}
+
 .keyboard-row {
   display: flex;
   gap: 12px;
