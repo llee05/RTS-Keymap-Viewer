@@ -129,17 +129,17 @@ export async function loadPresets(): Promise<KeyboardPreset[]> {
   const store = transaction.objectStore(PRESET_STORE);
   const presets = await requestToPromise<KeyboardPreset[]>(store.getAll());
 
+  await seedDefaultPresets(database);
+
   if (presets.length > 0) {
-    const migratedPresets = presets.map(migratePreset);
+    const defaultPresetIds = new Set(defaultPresets.map((preset) => preset.id));
+    const customPresets = presets
+      .filter((preset) => !defaultPresetIds.has(preset.id))
+      .map(migratePreset);
 
-    if (migratedPresets.some((preset, index) => preset !== presets[index])) {
-      await savePresets(migratedPresets);
-    }
-
-    return migratedPresets;
+    return [...defaultPresets, ...customPresets];
   }
 
-  await seedDefaultPresets(database);
   return defaultPresets;
 }
 
