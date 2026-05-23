@@ -27,7 +27,7 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: "F12", hotkeys: [""], height: 0.65 },
       ],
       [
-        { label: "`", hotkeys: ["Scout"] },
+        { label: "`", hotkeys: [""] },
         { label: "1", hotkeys: ["Build Barracks"] },
         { label: "2", hotkeys: ["Move Camera Up"] },
         { label: "3", hotkeys: ["Select Economy Building"] },
@@ -44,15 +44,7 @@ export const defaultPresets: KeyboardPreset[] = [
       ],
       [
         { label: "Tab", hotkeys: ["Cycle Selection"], width: 1.5 },
-        {
-          label: "Q",
-          hotkeys: [
-            "QQ: Build House",
-            "QW: Build Mill",
-            "QE: Build Lumber Camp",
-            "QR: Build Mining Camp",
-          ],
-        },
+        { label: "Q", hotkeys: ["Scout"] },
         { label: "W", hotkeys: ["Move Camera Up"] },
         { label: "E", hotkeys: ["Select Economy Building"] },
         { label: "R", hotkeys: [""] },

@@ -493,7 +493,7 @@ function App() {
                             aria-label={`${key.label} hotkeys`}
                             autoFocus
                             value={key.hotkeys.join('\n')}
-                            placeholder="One hotkey per line"
+                            placeholder="Single-tap hotkey"
                             onChange={(event) =>
                               updateDraftHotkeys(rowIndex, keyIndex, event.target.value)
                             }

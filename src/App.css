@@ -191,10 +191,15 @@
   box-sizing: border-box;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+  background: white;
   color: #111827;
   font: inherit;
   padding: 8px;
   resize: vertical;
+}
+
+.key-editor textarea::placeholder {
+  color: #6b7280;
 }
 
 .combo-editor {
