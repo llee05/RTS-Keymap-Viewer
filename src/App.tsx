@@ -443,8 +443,10 @@ function App() {
       )}
 
       <div className="status-row">
-        <p className="database-status"><span aria-hidden="true" />{databaseStatus}</p>
-        <p className="interaction-hint">Hover a key to view its commands</p>
+        <p className={`database-status ${databaseStatus.startsWith('Could not') ? 'status-error' : ''}`} aria-live="polite">
+          <span aria-hidden="true" />{databaseStatus}
+        </p>
+        <p className="interaction-hint">Hover or focus a key to view its commands</p>
       </div>
 
       <div className="keyboard-heading">
@@ -491,7 +493,7 @@ function App() {
                   style={{ width, height }}
                   data-key-position={keyId}
                   role={mode === 'edit' ? 'button' : undefined}
-                  tabIndex={mode === 'edit' ? 0 : undefined}
+                  tabIndex={0}
                   onMouseEnter={() => setHoveredKeyId(keyId)}
                   onMouseLeave={() => setHoveredKeyId((currentKeyId) => (currentKeyId === keyId ? null : currentKeyId))}
                   onClick={() => {
@@ -596,7 +598,7 @@ function App() {
                       )}
                     </>
                   ) : (
-                    <div className="tooltip">
+                    <div className="tooltip" role="tooltip">
                       <strong>{key.label}</strong>
                       {key.hotkeys.map((hotkey) => (
                         <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
