@@ -447,8 +447,20 @@ function App() {
         <p className="interaction-hint">Hover a key to view its commands</p>
       </div>
 
-      <div className="keyboard">
-        {visiblePreset?.rows.map((row, rowIndex) => (
+      <div className="keyboard-heading">
+        <div>
+          <p className="eyebrow">Reference board</p>
+          <h2>{visiblePreset?.name ?? 'Keyboard layout'}</h2>
+        </div>
+        <div className="keyboard-legend" aria-label="Keyboard legend">
+          <span><i className="legend-dot assigned" /> Assigned</span>
+          <span><i className="legend-dot combination" /> Combination</span>
+        </div>
+      </div>
+
+      <div className="keyboard-frame">
+        <div className="keyboard">
+          {visiblePreset?.rows.map((row, rowIndex) => (
           <div className="keyboard-row" key={rowIndex}>
             {row.map((key, keyIndex) => {
               const width = `${(key.width ?? 1) * 64}px`;
@@ -601,7 +613,8 @@ function App() {
               );
             })}
           </div>
-        ))}
+          ))}
+        </div>
       </div>
     </main>
   );
