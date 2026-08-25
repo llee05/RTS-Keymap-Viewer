@@ -360,50 +360,63 @@ function App() {
 
   return (
     <main className="app">
-      <h1>RTS Keymap Viewer</h1>
+      <header className="app-header">
+        <div className="brand-mark" aria-hidden="true">
+          <span /><span /><span /><span />
+        </div>
+        <div>
+          <p className="eyebrow">Command reference</p>
+          <h1>RTS Keymap Viewer</h1>
+          <p className="intro">Learn your layout. Build the muscle memory. Play faster.</p>
+        </div>
+      </header>
 
       {visiblePreset && (
-        <div className="preset-panel">
-          <div className="preset-picker">
-            <label htmlFor="preset">Preset</label>
-            <select
-              id="preset"
-              value={visiblePreset.id}
-              disabled={mode === 'edit'}
-              onChange={(event) => setActivePresetId(event.target.value)}
-            >
-              {presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name}
-                </option>
-              ))}
-              {mode === 'edit' && draftPreset && !presets.some((preset) => preset.id === draftPreset.id) && (
-                <option value={draftPreset.id}>{draftPreset.name}</option>
-              )}
-            </select>
-            <span>{visiblePreset.game}</span>
-          </div>
+        <section className="preset-panel" aria-label="Preset controls">
+          <div className="preset-panel-main">
+            <div className="preset-picker">
+              <label htmlFor="preset">Active layout</label>
+              <div className="select-wrap">
+                <select
+                  id="preset"
+                  value={visiblePreset.id}
+                  disabled={mode === 'edit'}
+                  onChange={(event) => setActivePresetId(event.target.value)}
+                >
+                  {presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                  {mode === 'edit' && draftPreset && !presets.some((preset) => preset.id === draftPreset.id) && (
+                    <option value={draftPreset.id}>{draftPreset.name}</option>
+                  )}
+                </select>
+              </div>
+              <span className="game-badge">{visiblePreset.game}</span>
+            </div>
 
-          <div className="mode-controls" aria-label="Preset actions">
-            {mode === 'view' ? (
-              <>
-                <button type="button" onClick={createPreset}>
-                  New preset
-                </button>
-                <button type="button" onClick={startEditing}>
-                  Edit preset
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="secondary-button" onClick={cancelEditing}>
-                  Cancel
-                </button>
-                <button type="button" onClick={saveDraftPreset}>
-                  Save preset
-                </button>
-              </>
-            )}
+            <div className="mode-controls" aria-label="Preset actions">
+              {mode === 'view' ? (
+                <>
+                  <button type="button" className="secondary-button" onClick={createPreset}>
+                    <span aria-hidden="true">＋</span> New preset
+                  </button>
+                  <button type="button" onClick={startEditing}>
+                    <span aria-hidden="true">✦</span> Edit preset
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="secondary-button" onClick={cancelEditing}>
+                    Cancel
+                  </button>
+                  <button type="button" onClick={saveDraftPreset}>
+                    Save preset
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {mode === 'edit' && draftPreset && (
@@ -426,10 +439,13 @@ function App() {
               </label>
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      <p className="database-status">{databaseStatus}</p>
+      <div className="status-row">
+        <p className="database-status"><span aria-hidden="true" />{databaseStatus}</p>
+        <p className="interaction-hint">Hover a key to view its commands</p>
+      </div>
 
       <div className="keyboard">
         {visiblePreset?.rows.map((row, rowIndex) => (
