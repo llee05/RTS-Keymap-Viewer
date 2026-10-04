@@ -62,7 +62,8 @@ Open the URL printed by Vite, normally `http://localhost:5173/RTS-Keymap-Viewer/
 | --- | --- |
 | `npm run dev` | Start the development server with hot module replacement. |
 | `npm run lint` | Run ESLint. |
-| `npm test` | Run Node regression tests for validation, search, draft isolation, and preset import/export. |
+| `npm test` | Run Node regression tests for validation, search, draft isolation, preset import/export, and storage transaction handling. |
+| `npm run test:coverage` | Run the unit suite and report coverage for the data modules it exercises. |
 | `npm run test:e2e` | Run Playwright regression tests against the production build in desktop and mobile Chromium. |
 | `npx tsc -b` | Check the application and Vite configuration types. |
 | `npm run build` | Run TypeScript checks and build static assets into `dist/`. |
@@ -85,6 +86,8 @@ npx playwright install chromium
 ```
 
 On Linux systems missing browser libraries, use `npx playwright install --with-deps chromium`. The browser suite starts and stops Vite preview on `http://127.0.0.1:4173/RTS-Keymap-Viewer/`, so build first and leave that port free. Each test uses its own temporary browser profile and IndexedDB database. Failed browser runs leave traces in `test-results/`.
+
+Storage unit tests drive database request and transaction events through a controlled stub to check commit timing, error propagation, and connection cleanup. The browser suite verifies persistence and rollback using real IndexedDB. Unit coverage reports describe the data modules; React components are exercised by the browser suite.
 
 ## Project structure
 

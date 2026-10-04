@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage tests/*.test.ts",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },
