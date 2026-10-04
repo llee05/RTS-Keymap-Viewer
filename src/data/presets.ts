@@ -52,7 +52,7 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-function writePresets(database: IDBDatabase, presets: KeyboardPreset[]): Promise<void> {
+function writeToStore(database: IDBDatabase, write: (store: IDBObjectStore) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(PRESET_STORE, 'readwrite');
     const store = transaction.objectStore(PRESET_STORE);
@@ -62,7 +62,7 @@ function writePresets(database: IDBDatabase, presets: KeyboardPreset[]): Promise
     transaction.onerror = () => reject(transaction.error ?? new Error('Database transaction failed'));
 
     try {
-      presets.forEach((preset) => store.put(preset));
+      write(store);
     } catch (error) {
       transaction.abort();
       reject(error);
@@ -72,7 +72,7 @@ function writePresets(database: IDBDatabase, presets: KeyboardPreset[]): Promise
 
 async function seedDefaultPresets(database: IDBDatabase) {
   defaultPresets.forEach(validatePreset);
-  await writePresets(database, defaultPresets);
+  await writeToStore(database, (store) => defaultPresets.forEach((preset) => store.put(preset)));
 }
 
 function cloneKeybind(keybind: Keybind): Keybind {
@@ -170,7 +170,17 @@ export async function savePresets(presets: KeyboardPreset[]): Promise<void> {
   presets.forEach(validatePreset);
   const database = await openPresetDatabase();
   try {
-    await writePresets(database, presets);
+    await writeToStore(database, (store) => presets.forEach((preset) => store.put(preset)));
+  } finally {
+    database.close();
+  }
+}
+
+export async function deletePreset(id: string): Promise<void> {
+  if (defaultPresets.some((preset) => preset.id === id)) throw new Error('Bundled presets cannot be deleted.');
+  const database = await openPresetDatabase();
+  try {
+    await writeToStore(database, (store) => { store.delete(id); });
   } finally {
     database.close();
   }
