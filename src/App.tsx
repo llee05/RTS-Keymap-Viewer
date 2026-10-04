@@ -1,13 +1,15 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { loadPresets, savePreset, type KeyboardPreset } from './data/presets';
+import {
+  detectKeyboardLabels, getDisplayRows, getKeyLabel, setKeyboardShape, withKeyCodes,
+  type KeyboardShape, type LabelLayout, type KeyPosition,
+} from './data/keyboardLayouts';
+import { KeyboardSetup } from './components/KeyboardSetup';
+import { KeyEditor } from './components/KeyEditor';
 
 type AppMode = 'view' | 'edit';
-type SelectedKey = {
-  rowIndex: number;
-  keyIndex: number;
-};
 type TooltipPosition = {
   keyId: string;
   left: number;
@@ -30,6 +32,10 @@ function getOrdinal(value: number) {
 function clonePreset(preset: KeyboardPreset): KeyboardPreset {
   return {
     ...preset,
+    keyboard: preset.keyboard ? {
+      ...preset.keyboard,
+      detectedLabels: preset.keyboard.detectedLabels ? { ...preset.keyboard.detectedLabels } : undefined,
+    } : undefined,
     rows: preset.rows.map((row) =>
       row.map((key) => ({
         ...key,
@@ -62,20 +68,29 @@ function App() {
   const [activePresetId, setActivePresetId] = useState('aoe4-default');
   const [mode, setMode] = useState<AppMode>('view');
   const [draftPreset, setDraftPreset] = useState<KeyboardPreset | null>(null);
-  const [selectedKey, setSelectedKey] = useState<SelectedKey | null>(null);
+  const [selectedKey, setSelectedKey] = useState<KeyPosition | null>(null);
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null);
   const [comboTargetKeyId, setComboTargetKeyId] = useState('');
   const [comboAction, setComboAction] = useState('');
+  const [detecting, setDetecting] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [layoutStatus, setLayoutStatus] = useState('');
+  const detectionRequest = useRef(0);
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
+  const displayRows = visiblePreset ? getDisplayRows(visiblePreset) : [];
+  const shownKeyIds = new Set(displayRows.flat().filter(({ key }) => !key.spacer).map(({ id }) => id));
+  const selectedKeybind = selectedKey ? visiblePreset?.rows[selectedKey.rowIndex]?.[selectedKey.keyIndex] : undefined;
+  const selectedKeyId = selectedKey ? getKeyId(selectedKey.rowIndex, selectedKey.keyIndex) : null;
   const keyLabelCounts = new Map<string, number>();
 
   visiblePreset?.rows.forEach((row) => {
     row.forEach((key) => {
       if (!key.spacer) {
-        keyLabelCounts.set(key.label, (keyLabelCounts.get(key.label) ?? 0) + 1);
+        const label = getKeyLabel(key, visiblePreset?.keyboard);
+        keyLabelCounts.set(label, (keyLabelCounts.get(label) ?? 0) + 1);
       }
     });
   });
@@ -86,14 +101,14 @@ function App() {
         key.spacer
           ? []
           : (() => {
-              const baseLabel = key.label || 'Blank key';
-              const duplicateCount = keyLabelCounts.get(key.label) ?? 0;
+              const baseLabel = getKeyLabel(key, visiblePreset.keyboard) || 'Blank key';
+              const duplicateCount = keyLabelCounts.get(baseLabel) ?? 0;
               const matchingKeysBeforeThisOne = visiblePreset.rows
                 .slice(0, rowIndex + 1)
                 .flatMap((currentRow, currentRowIndex) =>
                   currentRow
                     .slice(0, currentRowIndex === rowIndex ? keyIndex + 1 : undefined)
-                    .filter((currentKey) => !currentKey.spacer && currentKey.label === key.label),
+                    .filter((currentKey) => !currentKey.spacer && getKeyLabel(currentKey, visiblePreset.keyboard) === baseLabel),
                 ).length;
               const duplicateLabel =
                 duplicateCount === 2
@@ -110,6 +125,11 @@ function App() {
       ),
     ) ?? [];
   const keyLabels = new Map(keyOptions.map((keyOption) => [keyOption.id, keyOption.label]));
+  const availableComboTargets = keyOptions.filter(({ id }) =>
+    shownKeyIds.has(id) && id !== selectedKeyId &&
+    !selectedKeybind?.combinations?.some((combination) => combination.keyId === id),
+  );
+  const hiddenKeyCount = keyOptions.filter(({ id }) => !shownKeyIds.has(id)).length;
   const highlightedKeyIds = new Set<string>();
 
   if (hoveredKeyId && visiblePreset) {
@@ -140,7 +160,7 @@ function App() {
         const loadedPresets = await loadPresets();
 
         if (!ignore) {
-          setPresets(loadedPresets);
+          setPresets(loadedPresets.map(withKeyCodes));
           setActivePresetId(loadedPresets[0]?.id ?? '');
           setDatabaseStatus('Loaded from local database');
         }
@@ -159,32 +179,41 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (mode !== 'edit' || !selectedKey) {
-      return;
-    }
+    if (!listening || mode !== 'edit' || !draftPreset) return;
+    const preset = draftPreset;
 
-    const currentSelectedKey = selectedKey;
-
-    function closeEditorOnOutsideClick(event: PointerEvent) {
-      if (!(event.target instanceof Element)) {
+    function selectPhysicalKey(event: KeyboardEvent) {
+      if (event.repeat || event.isComposing || event.key === 'Tab') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setListening(false);
+      if (event.key === 'Escape') {
+        setLayoutStatus('Key selection cancelled.');
         return;
       }
-
-      const selectedKeyElement = event.target.closest(
-        `[data-key-position="${currentSelectedKey.rowIndex}-${currentSelectedKey.keyIndex}"]`,
-      );
-
-      if (!selectedKeyElement) {
-        setSelectedKey(null);
+      const entry = getDisplayRows(preset).flat().find(({ key }) => !key.spacer && key.code === event.code);
+      if (!entry) {
+        setLayoutStatus('That key is outside this shape or cannot be identified. Select “All saved keys” or click a displayed key.');
+        return;
       }
+      setSelectedKey({ rowIndex: entry.rowIndex, keyIndex: entry.keyIndex });
+      setComboTargetKeyId('');
+      setComboAction('');
+      setLayoutStatus(`Selected ${getKeyLabel(entry.key, preset.keyboard)}.`);
     }
 
-    document.addEventListener('pointerdown', closeEditorOnOutsideClick, true);
+    function stopListening() {
+      setListening(false);
+      setLayoutStatus('Key selection stopped when the window lost focus.');
+    }
 
+    window.addEventListener('keydown', selectPhysicalKey, true);
+    window.addEventListener('blur', stopListening);
     return () => {
-      document.removeEventListener('pointerdown', closeEditorOnOutsideClick, true);
+      window.removeEventListener('keydown', selectPhysicalKey, true);
+      window.removeEventListener('blur', stopListening);
     };
-  }, [mode, selectedKey]);
+  }, [listening, mode, draftPreset]);
 
   useEffect(() => {
     if (!tooltipPosition) {
@@ -205,6 +234,56 @@ function App() {
     };
   }, [tooltipPosition]);
 
+  function resetKeyboardInteraction() {
+    detectionRequest.current += 1;
+    setDetecting(false);
+    setListening(false);
+    setLayoutStatus('');
+    setHoveredKeyId(null);
+    setTooltipPosition(null);
+    setSelectedKey(null);
+    setComboTargetKeyId('');
+    setComboAction('');
+  }
+
+  function changeKeyboardShape(shape: KeyboardShape) {
+    setDraftPreset((current) => current ? setKeyboardShape(current, shape) : current);
+    resetKeyboardInteraction();
+  }
+
+  function changeKeyboardLabels(labels: LabelLayout) {
+    setDraftPreset((current) => current ? {
+      ...current,
+      keyboard: { shape: 'original', ...current.keyboard, labels },
+    } : current);
+    resetKeyboardInteraction();
+  }
+
+  async function detectLabels() {
+    const request = ++detectionRequest.current;
+    setDetecting(true);
+    setLayoutStatus('Reading keyboard labels…');
+    try {
+      const detectedLabels = await detectKeyboardLabels();
+      if (request !== detectionRequest.current) return;
+      setDraftPreset((current) => current ? {
+        ...current,
+        keyboard: { shape: 'original', ...current.keyboard, labels: 'detected', detectedLabels },
+      } : current);
+      setSelectedKey(null);
+      setHoveredKeyId(null);
+      setTooltipPosition(null);
+      setLayoutStatus('Keyboard labels detected. Check that they match your keyboard; choose its shape manually.');
+    } catch (error) {
+      if (request !== detectionRequest.current) return;
+      setLayoutStatus(error instanceof Error
+        ? error.message
+        : 'Could not detect keyboard labels. Choose a character layout manually.');
+    } finally {
+      if (request === detectionRequest.current) setDetecting(false);
+    }
+  }
+
   function createPreset() {
     if (!activePreset) {
       return;
@@ -213,7 +292,7 @@ function App() {
     const newPreset = createPresetFromTemplate(activePreset);
 
     setDraftPreset(newPreset);
-    setActivePresetId(newPreset.id);
+    resetKeyboardInteraction();
     setMode('edit');
     setSelectedKey(null);
     setDatabaseStatus('Editing a new preset');
@@ -224,6 +303,7 @@ function App() {
       return;
     }
 
+    resetKeyboardInteraction();
     setDraftPreset(clonePreset(activePreset));
     setMode('edit');
     setSelectedKey(null);
@@ -231,6 +311,7 @@ function App() {
   }
 
   function cancelEditing() {
+    resetKeyboardInteraction();
     setDraftPreset(null);
     setMode('view');
     setSelectedKey(null);
@@ -255,6 +336,7 @@ function App() {
 
         return [...currentPresets, draftPreset];
       });
+      resetKeyboardInteraction();
       setActivePresetId(draftPreset.id);
       setDraftPreset(null);
       setMode('view');
@@ -434,7 +516,7 @@ function App() {
                   id="preset"
                   value={visiblePreset.id}
                   disabled={mode === 'edit'}
-                  onChange={(event) => setActivePresetId(event.target.value)}
+                  onChange={(event) => { resetKeyboardInteraction(); setActivePresetId(event.target.value); }}
                 >
                   {presets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
@@ -464,7 +546,7 @@ function App() {
                   <button type="button" className="secondary-button" onClick={cancelEditing}>
                     Cancel
                   </button>
-                  <button type="button" onClick={saveDraftPreset}>
+                  <button type="button" disabled={detecting} onClick={saveDraftPreset}>
                     Save preset
                   </button>
                 </>
@@ -502,6 +584,21 @@ function App() {
         <p className="interaction-hint">Hover or focus a key to view its commands</p>
       </div>
 
+      {visiblePreset && (
+        <KeyboardSetup
+          settings={visiblePreset.keyboard}
+          editing={mode === 'edit'}
+          detecting={detecting}
+          listening={listening}
+          status={layoutStatus}
+          hiddenKeyCount={hiddenKeyCount}
+          onShapeChange={changeKeyboardShape}
+          onLabelsChange={changeKeyboardLabels}
+          onDetect={detectLabels}
+          onListen={() => { setListening((current) => !current); setLayoutStatus(''); }}
+        />
+      )}
+
       <div className="keyboard-heading">
         <div>
           <p className="eyebrow">Reference board</p>
@@ -513,27 +610,49 @@ function App() {
         </div>
       </div>
 
+      {mode === 'edit' && selectedKey && selectedKeybind && (
+        <KeyEditor
+          key={getKeyId(selectedKey.rowIndex, selectedKey.keyIndex)}
+          label={keyLabels.get(selectedKeyId ?? '') ?? getKeyLabel(selectedKeybind, visiblePreset?.keyboard)}
+          keybind={selectedKeybind}
+          options={availableComboTargets}
+          keyLabels={keyLabels}
+          targetKeyId={comboTargetKeyId}
+          action={comboAction}
+          onHotkeysChange={(value) => updateDraftHotkeys(selectedKey.rowIndex, selectedKey.keyIndex, value)}
+          onTargetChange={setComboTargetKeyId}
+          onActionChange={setComboAction}
+          onAddCombination={() => addDraftCombination(selectedKey.rowIndex, selectedKey.keyIndex)}
+          onCombinationChange={(id, value) => updateDraftCombinationAction(selectedKey.rowIndex, selectedKey.keyIndex, id, value)}
+          onRemoveCombination={(id) => removeDraftCombination(selectedKey.rowIndex, selectedKey.keyIndex, id)}
+          onClose={() => {
+            document.querySelector<HTMLElement>(`[data-key-position="${getKeyId(selectedKey.rowIndex, selectedKey.keyIndex)}"]`)?.focus();
+            setSelectedKey(null);
+          }}
+        />
+      )}
+
       <div className="keyboard-frame">
         <div className="keyboard">
-          {visiblePreset?.rows.map((row, rowIndex) => (
-          <div className="keyboard-row" key={rowIndex}>
-            {row.map((key, keyIndex) => {
+          {displayRows.map((row, displayRowIndex) => (
+          <div
+            className="keyboard-row"
+            key={displayRowIndex}
+            style={visiblePreset?.keyboard && visiblePreset.keyboard.shape !== 'original' ? {
+              height: `${Math.min(1, ...row.filter(({ key }) => !key.spacer).map(({ key }) => key.height ?? 1)) * 64}px`,
+            } : undefined}
+          >
+            {row.map(({ key, rowIndex, keyIndex, id: keyId }) => {
               const width = `${(key.width ?? 1) * 64}px`;
               const height = `${(key.height ?? 1) * 64}px`;
-              const keyId = getKeyId(rowIndex, keyIndex);
+              const label = getKeyLabel(key, visiblePreset?.keyboard);
               const isSelected =
                 selectedKey?.rowIndex === rowIndex && selectedKey.keyIndex === keyIndex;
               const isHighlighted = highlightedKeyIds.has(keyId);
-              const availableComboTargets = keyOptions.filter(
-                (keyOption) =>
-                  keyOption.id !== keyId &&
-                  !key.combinations?.some((combination) => combination.keyId === keyOption.id),
-              );
-
               if (key.spacer) {
                 return (
                   <div
-                    key={`spacer-${rowIndex}-${keyIndex}`}
+                    key={keyId}
                     style={{ width }}
                   />
                 );
@@ -542,9 +661,12 @@ function App() {
               return (
                 <div
                   className={`key ${mode === 'edit' ? 'key-editable' : ''} ${isSelected ? 'key-selected' : ''} ${isHighlighted ? 'key-combo-highlight' : ''}`}
-                  key={`${key.label}-${rowIndex}-${keyIndex}`}
+                  key={keyId}
                   style={{ width, height }}
                   data-key-position={keyId}
+                  data-key-code={key.code}
+                  aria-label={keyLabels.get(keyId)}
+                  aria-pressed={mode === 'edit' ? isSelected : undefined}
                   role={mode === 'edit' ? 'button' : undefined}
                   tabIndex={0}
                   onMouseEnter={(event) => showTooltip(keyId, event.currentTarget)}
@@ -557,6 +679,7 @@ function App() {
                   onBlur={() => hideTooltip(keyId)}
                   onClick={() => {
                     if (mode === 'edit') {
+                      setListening(false);
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
                       setComboAction('');
@@ -565,97 +688,17 @@ function App() {
                   onKeyDown={(event) => {
                     if (mode === 'edit' && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault();
+                      setListening(false);
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
                       setComboAction('');
                     }
                   }}
                 >
-                  <span>{key.label}</span>
+                  <span>{label}</span>
 
                   {mode === 'edit' ? (
-                    <>
-                      <small>{key.hotkeys.filter(Boolean)[0] ?? 'Unassigned'}</small>
-                      {isSelected && (
-                        <div className="key-editor" onClick={(event) => event.stopPropagation()}>
-                          <textarea
-                            aria-label={`${key.label} hotkeys`}
-                            autoFocus
-                            value={key.hotkeys.join('\n')}
-                            placeholder="Single-tap hotkey"
-                            onChange={(event) =>
-                              updateDraftHotkeys(rowIndex, keyIndex, event.target.value)
-                            }
-                          />
-                          <div className="combo-editor">
-                            <label>
-                              Combination key
-                              <select
-                                value={comboTargetKeyId}
-                                onChange={(event) => setComboTargetKeyId(event.target.value)}
-                              >
-                                <option value="">Choose key</option>
-                                {availableComboTargets.map((keyOption) => (
-                                  <option key={keyOption.id} value={keyOption.id}>
-                                    {keyOption.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              Action
-                              <input
-                                value={comboAction}
-                                placeholder="Action for this combination"
-                                onChange={(event) => setComboAction(event.target.value)}
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              disabled={!comboTargetKeyId || !comboAction.trim()}
-                              onClick={() => addDraftCombination(rowIndex, keyIndex)}
-                            >
-                              Add combination
-                            </button>
-                            {(key.combinations?.length ?? 0) > 0 && (
-                              <ul>
-                                {key.combinations?.map((combination) => (
-                                  <li key={combination.keyId}>
-                                    <span>
-                                      {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
-                                    </span>
-                                    <input
-                                      value={combination.action ?? ''}
-                                      placeholder="Action"
-                                      aria-label={`${key.label} + ${
-                                        keyLabels.get(combination.keyId) ?? combination.keyId
-                                      } action`}
-                                      onChange={(event) =>
-                                        updateDraftCombinationAction(
-                                          rowIndex,
-                                          keyIndex,
-                                          combination.keyId,
-                                          event.target.value,
-                                        )
-                                      }
-                                    />
-                                    <button
-                                      type="button"
-                                      aria-label={`Remove ${key.label} combination`}
-                                      onClick={() =>
-                                        removeDraftCombination(rowIndex, keyIndex, combination.keyId)
-                                      }
-                                    >
-                                      Remove
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    <small>{key.hotkeys.filter(Boolean)[0] ?? 'Unassigned'}</small>
                   ) : (
                     tooltipPosition?.keyId === keyId &&
                     createPortal(
@@ -668,13 +711,13 @@ function App() {
                           '--tooltip-arrow-left': `${tooltipPosition.arrowLeft}px`,
                         } as React.CSSProperties}
                       >
-                        <strong>{key.label}</strong>
+                        <strong>{label}</strong>
                         {key.hotkeys.map((hotkey) => (
                           <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
                         ))}
                         {key.combinations?.map((combination) => (
                           <p className="combo-tooltip" key={combination.keyId}>
-                            {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
+                            {label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
                             {combination.action ? `: ${combination.action}` : ': No action specified'}
                           </p>
                         ))}

@@ -4,6 +4,7 @@ import { defaultPresets } from "./defaultPresets";
 
 export type Keybind = {
   label: string;
+  code?: string;
   hotkeys: string[];
   combinations?: KeyCombination[];
   width?: number;
@@ -21,6 +22,11 @@ export type KeyboardPreset = {
   name: string;
   game: string;
   rows: Keybind[][];
+  keyboard?: {
+    shape: 'original' | 'compact' | 'tkl' | 'full';
+    labels: 'original' | 'qwerty' | 'azerty' | 'qwertz' | 'detected';
+    detectedLabels?: Record<string, string>;
+  };
 };
 
 const DATABASE_NAME = "rts-keymap-viewer";
