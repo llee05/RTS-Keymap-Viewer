@@ -1,7 +1,9 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { loadPresets, savePreset, type KeyboardPreset } from './data/presets';
+import { defaultPresets } from './data/defaultPresets';
+import { getPresetValidationErrors } from './data/presetValidation';
 
 type AppMode = 'view' | 'edit';
 type SelectedKey = {
@@ -43,7 +45,7 @@ function clonePreset(preset: KeyboardPreset): KeyboardPreset {
 function createPresetFromTemplate(template: KeyboardPreset): KeyboardPreset {
   return {
     ...clonePreset(template),
-    id: `custom-${Date.now()}`,
+    id: `custom-${crypto.randomUUID()}`,
     name: 'Custom Preset',
   };
 }
@@ -67,9 +69,13 @@ function App() {
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null);
   const [comboTargetKeyId, setComboTargetKeyId] = useState('');
   const [comboAction, setComboAction] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInProgress = useRef(false);
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
+  const isBundledPreset = defaultPresets.some((preset) => preset.id === visiblePreset?.id);
+  const validationErrors = visiblePreset ? getPresetValidationErrors(visiblePreset) : [];
   const keyLabelCounts = new Map<string, number>();
 
   visiblePreset?.rows.forEach((row) => {
@@ -159,7 +165,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (mode !== 'edit' || !selectedKey) {
+    if (mode !== 'edit' || !selectedKey || isSaving) {
       return;
     }
 
@@ -184,7 +190,7 @@ function App() {
     return () => {
       document.removeEventListener('pointerdown', closeEditorOnOutsideClick, true);
     };
-  }, [mode, selectedKey]);
+  }, [mode, selectedKey, isSaving]);
 
   useEffect(() => {
     if (!tooltipPosition) {
@@ -213,7 +219,6 @@ function App() {
     const newPreset = createPresetFromTemplate(activePreset);
 
     setDraftPreset(newPreset);
-    setActivePresetId(newPreset.id);
     setMode('edit');
     setSelectedKey(null);
     setDatabaseStatus('Editing a new preset');
@@ -231,37 +236,68 @@ function App() {
   }
 
   function cancelEditing() {
+    if (saveInProgress.current) {
+      return;
+    }
+
     setDraftPreset(null);
     setMode('view');
     setSelectedKey(null);
     setDatabaseStatus('Edit cancelled');
   }
 
-  async function saveDraftPreset() {
-    if (!draftPreset) {
+  async function saveDraftPreset(asCustom = false) {
+    if (!draftPreset || saveInProgress.current) {
       return;
     }
 
+    const presetToSave = clonePreset(draftPreset);
+    presetToSave.rows.forEach((row) => {
+      row.forEach((key) => {
+        if (!key.spacer) {
+          key.hotkeys = parseHotkeyText(key.hotkeys.join('\n'));
+        }
+      });
+    });
+
+    if (asCustom) {
+      presetToSave.id = `custom-${crypto.randomUUID()}`;
+      presetToSave.name = `${presetToSave.name} (Custom)`;
+    }
+
+    saveInProgress.current = true;
+    setIsSaving(true);
+    setDatabaseStatus('Saving preset...');
+
     try {
-      await savePreset(draftPreset);
+      await savePreset(presetToSave);
       setPresets((currentPresets) => {
-        const presetExists = currentPresets.some((preset) => preset.id === draftPreset.id);
+        const presetExists = currentPresets.some((preset) => preset.id === presetToSave.id);
 
         if (presetExists) {
           return currentPresets.map((preset) =>
-            preset.id === draftPreset.id ? draftPreset : preset,
+            preset.id === presetToSave.id ? presetToSave : preset,
           );
         }
 
-        return [...currentPresets, draftPreset];
+        return [...currentPresets, presetToSave];
       });
-      setActivePresetId(draftPreset.id);
+      setActivePresetId(presetToSave.id);
       setDraftPreset(null);
       setMode('view');
       setSelectedKey(null);
-      setDatabaseStatus('Saved preset to local database');
-    } catch {
-      setDatabaseStatus('Could not save to local database');
+      setDatabaseStatus(
+        defaultPresets.some((preset) => preset.id === presetToSave.id)
+          ? 'Saved for this session. Bundled edits reset after reload.'
+          : 'Saved preset to local database',
+      );
+    } catch (error) {
+      setDatabaseStatus(
+        `Could not save preset: ${error instanceof Error ? error.message : 'local database unavailable'}`,
+      );
+    } finally {
+      saveInProgress.current = false;
+      setIsSaving(false);
     }
   }
 
@@ -285,7 +321,7 @@ function App() {
 
           return {
             ...key,
-            hotkeys: parseHotkeyText(value),
+            hotkeys: value.split('\n'),
           };
         }),
       );
@@ -425,7 +461,7 @@ function App() {
       </header>
 
       {visiblePreset && (
-        <section className="preset-panel" aria-label="Preset controls">
+        <section className="preset-panel" aria-label="Preset controls" aria-busy={isSaving}>
           <div className="preset-panel-main">
             <div className="preset-picker">
               <label htmlFor="preset">Active layout</label>
@@ -461,19 +497,48 @@ function App() {
                 </>
               ) : (
                 <>
-                  <button type="button" className="secondary-button" onClick={cancelEditing}>
+                  <button type="button" className="secondary-button" disabled={isSaving} onClick={cancelEditing}>
                     Cancel
                   </button>
-                  <button type="button" onClick={saveDraftPreset}>
-                    Save preset
+                  <button
+                    type="button"
+                    className={isBundledPreset ? 'secondary-button' : undefined}
+                    disabled={isSaving}
+                    onClick={() => saveDraftPreset()}
+                  >
+                    {isSaving ? 'Saving...' : isBundledPreset ? 'Save for this session' : 'Save preset'}
                   </button>
+                  {isBundledPreset && (
+                    <button type="button" disabled={isSaving} onClick={() => saveDraftPreset(true)}>
+                      Save as custom
+                    </button>
+                  )}
                 </>
               )}
             </div>
           </div>
 
+          {isBundledPreset && (
+            <p className="preset-notice">
+              Bundled preset: direct edits reset after reload.{' '}
+              {mode === 'edit'
+                ? 'Choose Save as custom to keep your changes.'
+                : 'Choose New preset to keep a customized copy.'}
+            </p>
+          )}
+
+          {validationErrors.length > 0 && (
+            <div className="preset-notice preset-validation">
+              <p>This preset has invalid combinations. Edit it to remove or correct them before saving.</p>
+              <ul>
+                {validationErrors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}
+              </ul>
+            </div>
+          )}
+
           {mode === 'edit' && draftPreset && (
-            <div className="preset-editor">
+            <fieldset className="preset-editor" disabled={isSaving}>
+              <legend className="visually-hidden">Preset details</legend>
               <label htmlFor="preset-name">
                 Name
                 <input
@@ -490,7 +555,7 @@ function App() {
                   onChange={(event) => updateDraftField('game', event.target.value)}
                 />
               </label>
-            </div>
+            </fieldset>
           )}
         </section>
       )}
@@ -546,6 +611,7 @@ function App() {
                   style={{ width, height }}
                   data-key-position={keyId}
                   role={mode === 'edit' ? 'button' : undefined}
+                  aria-disabled={mode === 'edit' && isSaving ? true : undefined}
                   tabIndex={0}
                   onMouseEnter={(event) => showTooltip(keyId, event.currentTarget)}
                   onMouseLeave={(event) => {
@@ -556,14 +622,18 @@ function App() {
                   onFocus={(event) => showTooltip(keyId, event.currentTarget)}
                   onBlur={() => hideTooltip(keyId)}
                   onClick={() => {
-                    if (mode === 'edit') {
+                    if (mode === 'edit' && !saveInProgress.current) {
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
                       setComboAction('');
                     }
                   }}
                   onKeyDown={(event) => {
-                    if (mode === 'edit' && (event.key === 'Enter' || event.key === ' ')) {
+                    if (
+                      mode === 'edit' && !saveInProgress.current &&
+                      event.target === event.currentTarget &&
+                      (event.key === 'Enter' || event.key === ' ')
+                    ) {
                       event.preventDefault();
                       setSelectedKey({ rowIndex, keyIndex });
                       setComboTargetKeyId('');
@@ -577,7 +647,8 @@ function App() {
                     <>
                       <small>{key.hotkeys.filter(Boolean)[0] ?? 'Unassigned'}</small>
                       {isSelected && (
-                        <div className="key-editor" onClick={(event) => event.stopPropagation()}>
+                        <fieldset className="key-editor" disabled={isSaving} onClick={(event) => event.stopPropagation()}>
+                          <legend className="visually-hidden">{key.label} commands and combinations</legend>
                           <textarea
                             aria-label={`${key.label} hotkeys`}
                             autoFocus
@@ -619,8 +690,8 @@ function App() {
                             </button>
                             {(key.combinations?.length ?? 0) > 0 && (
                               <ul>
-                                {key.combinations?.map((combination) => (
-                                  <li key={combination.keyId}>
+                                {key.combinations?.map((combination, combinationIndex) => (
+                                  <li key={`${combination.keyId}-${combinationIndex}`}>
                                     <span>
                                       {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
                                     </span>
@@ -653,7 +724,7 @@ function App() {
                               </ul>
                             )}
                           </div>
-                        </div>
+                        </fieldset>
                       )}
                     </>
                   ) : (
@@ -672,8 +743,8 @@ function App() {
                         {key.hotkeys.map((hotkey) => (
                           <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
                         ))}
-                        {key.combinations?.map((combination) => (
-                          <p className="combo-tooltip" key={combination.keyId}>
+                        {key.combinations?.map((combination, combinationIndex) => (
+                          <p className="combo-tooltip" key={`${combination.keyId}-${combinationIndex}`}>
                             {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
                             {combination.action ? `: ${combination.action}` : ': No action specified'}
                           </p>

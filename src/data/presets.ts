@@ -1,6 +1,7 @@
 // src/data/presets.ts
 
-import { defaultPresets } from "./defaultPresets";
+import { defaultPresets } from "./defaultPresets.ts";
+import { validatePreset } from './presetValidation.ts';
 
 export type Keybind = {
   label: string;
@@ -51,13 +52,27 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function seedDefaultPresets(database: IDBDatabase) {
-  const transaction = database.transaction(PRESET_STORE, "readwrite");
-  const store = transaction.objectStore(PRESET_STORE);
+function writePresets(database: IDBDatabase, presets: KeyboardPreset[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(PRESET_STORE, 'readwrite');
+    const store = transaction.objectStore(PRESET_STORE);
 
-  await Promise.all(
-    defaultPresets.map((preset) => requestToPromise(store.put(preset))),
-  );
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error ?? new Error('Database transaction aborted'));
+    transaction.onerror = () => reject(transaction.error ?? new Error('Database transaction failed'));
+
+    try {
+      presets.forEach((preset) => store.put(preset));
+    } catch (error) {
+      transaction.abort();
+      reject(error);
+    }
+  });
+}
+
+async function seedDefaultPresets(database: IDBDatabase) {
+  defaultPresets.forEach(validatePreset);
+  await writePresets(database, defaultPresets);
 }
 
 function cloneKeybind(keybind: Keybind): Keybind {
@@ -125,36 +140,38 @@ function migratePreset(preset: KeyboardPreset): KeyboardPreset {
 
 export async function loadPresets(): Promise<KeyboardPreset[]> {
   const database = await openPresetDatabase();
-  const transaction = database.transaction(PRESET_STORE, "readonly");
-  const store = transaction.objectStore(PRESET_STORE);
-  const presets = await requestToPromise<KeyboardPreset[]>(store.getAll());
+  try {
+    const transaction = database.transaction(PRESET_STORE, "readonly");
+    const store = transaction.objectStore(PRESET_STORE);
+    const presets = await requestToPromise<KeyboardPreset[]>(store.getAll());
 
-  await seedDefaultPresets(database);
+    await seedDefaultPresets(database);
 
-  if (presets.length > 0) {
-    const defaultPresetIds = new Set(defaultPresets.map((preset) => preset.id));
-    const customPresets = presets
-      .filter((preset) => !defaultPresetIds.has(preset.id))
-      .map(migratePreset);
+    if (presets.length > 0) {
+      const defaultPresetIds = new Set(defaultPresets.map((preset) => preset.id));
+      const customPresets = presets
+        .filter((preset) => !defaultPresetIds.has(preset.id))
+        .map(migratePreset);
 
-    return [...defaultPresets, ...customPresets];
+      return [...defaultPresets, ...customPresets];
+    }
+
+    return defaultPresets;
+  } finally {
+    database.close();
   }
-
-  return defaultPresets;
 }
 
 export async function savePreset(preset: KeyboardPreset): Promise<void> {
-  const database = await openPresetDatabase();
-  const transaction = database.transaction(PRESET_STORE, "readwrite");
-  const store = transaction.objectStore(PRESET_STORE);
-
-  await requestToPromise(store.put(preset));
+  await savePresets([preset]);
 }
 
 export async function savePresets(presets: KeyboardPreset[]): Promise<void> {
+  presets.forEach(validatePreset);
   const database = await openPresetDatabase();
-  const transaction = database.transaction(PRESET_STORE, "readwrite");
-  const store = transaction.objectStore(PRESET_STORE);
-
-  await Promise.all(presets.map((preset) => requestToPromise(store.put(preset))));
+  try {
+    await writePresets(database, presets);
+  } finally {
+    database.close();
+  }
 }

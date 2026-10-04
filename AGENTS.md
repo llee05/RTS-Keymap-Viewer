@@ -42,7 +42,7 @@ RTS Keymap Viewer is a browser-only React 19 and TypeScript 6 application built 
 
 Install the locked dependencies with `npm ci`, then use `npm run dev`. The local URL normally includes `/RTS-Keymap-Viewer/`. `npm run build` runs `tsc -b` followed by Vite and outputs `dist/`; `npm run preview` serves that build.
 
-Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later, to satisfy the locked Vite and ESLint requirements. There is currently no automated test runner configured.
+Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later, to satisfy the locked Vite and ESLint requirements. `npm test` uses Node's built-in test runner to check preset combination validation.
 
 ## Validation
 
@@ -50,6 +50,7 @@ Run the checks relevant to the change before handing it off:
 
 ```bash
 npm run lint
+npm test
 npx tsc -b
 npm run build
 ```

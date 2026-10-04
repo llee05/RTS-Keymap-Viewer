@@ -60,7 +60,7 @@ export const defaultPresets: KeyboardPreset[] = [
       ],
       [
         { label: "Caps Lock", hotkeys: ["Toggle Grid Mode"], width: 1.85 },
-        { label: "A", hotkeys: ["Attack Move"], combinations: [{keyId: "3-1", action: "Select all units on screen"}] },
+        { label: "A", hotkeys: ["Attack Move"], combinations: [{keyId: "5-0", action: "Select all units on screen"}] },
         { label: "S", hotkeys: ["Stop Unit"] },
         { label: "D", hotkeys: ["Delete Unit"] },
         { label: "F", hotkeys: ["Enter Building"] },

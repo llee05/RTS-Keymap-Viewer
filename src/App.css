@@ -26,14 +26,21 @@ h1 { margin: 0; color: #f7f9ff; font-size: clamp(1.75rem, 4vw, 2.6rem); line-hei
 .preset-picker select:disabled { cursor: not-allowed; opacity: 0.65; }
 .game-badge { margin-bottom: 7px; padding: 3px 8px; border: 1px solid rgba(109, 140, 255, 0.28); border-radius: 99px; background: rgba(109, 140, 255, 0.1); color: #aebeff; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
-.mode-controls { display: flex; gap: 9px; }
-.mode-controls button { min-height: 40px; padding: 0 15px; border: 1px solid #7893ff; border-radius: 9px; background: linear-gradient(180deg, #708dff, #5573e8); color: white; cursor: pointer; font-size: 0.8rem; font-weight: 700; box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(63, 91, 207, 0.2); transition: transform 150ms ease, filter 150ms ease; }
+.mode-controls { display: flex; flex-wrap: wrap; gap: 9px; }
+.mode-controls button { white-space: nowrap; min-height: 40px; padding: 0 15px; border: 1px solid #7893ff; border-radius: 9px; background: linear-gradient(180deg, #708dff, #5573e8); color: white; cursor: pointer; font-size: 0.8rem; font-weight: 700; box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(63, 91, 207, 0.2); transition: transform 150ms ease, filter 150ms ease; }
 .mode-controls button:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .mode-controls button:active { transform: translateY(0); }
 .mode-controls .secondary-button { border-color: #364157; background: #171e2b; color: #c7cfdd; box-shadow: none; }
 .mode-controls .secondary-button:hover { background: #1d2635; }
+.mode-controls button:disabled { cursor: wait; opacity: 0.6; transform: none; filter: none; }
 
-.preset-editor { display: flex; gap: 14px; padding: 17px 20px 20px; border-top: 1px solid var(--border); }
+.preset-notice { margin: 0; padding: 0 20px 18px; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+.preset-validation { color: #d89a9a; }
+.preset-validation p { margin: 0; }
+.preset-validation ul { margin: 6px 0 0; padding-left: 20px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.preset-editor { display: flex; min-width: 0; margin: 0; gap: 14px; padding: 17px 20px 20px; border: 0; border-top: 1px solid var(--border); }
 .preset-editor label { display: flex; flex: 1; flex-direction: column; gap: 7px; }
 .preset-editor input { width: 100%; padding: 10px 12px; text-transform: none; }
 .status-row { display: flex; justify-content: space-between; gap: 16px; margin: 0 4px 24px; }
@@ -141,6 +148,8 @@ h1 { margin: 0; color: #f7f9ff; font-size: clamp(1.75rem, 4vw, 2.6rem); line-hei
   top: 72px;
   left: 0;
   width: 310px;
+  min-width: 0;
+  margin: 0;
   border: 1px solid #3c4b61;
   border-radius: 13px;
   background: #111722;

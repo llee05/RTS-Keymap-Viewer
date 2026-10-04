@@ -19,13 +19,15 @@ Editing a preset changes the reference board. Configure the actual game bindings
 2. Select **New preset** to copy the active layout, or **Edit preset** to edit it directly.
 3. Change the preset's **Name** and **Game** as needed. Click a key, or focus it and press Enter or Space, to open its editor.
 4. Enter commands one per line. To add a combination, choose another key, enter its action, and select **Add combination**. Existing combination actions can be edited or removed. Duplicate labels are distinguished in the picker, such as Left Ctrl and Right Ctrl.
-5. Select **Save preset** to store the draft, or **Cancel** to discard it. Layout switching is disabled while editing.
+5. Select **Save preset** to store a custom draft, or **Cancel** to discard it and return to the original layout. When editing a bundled layout, choose **Save as custom** to keep your changes across reloads, or **Save for this session** for temporary changes. Layout switching is disabled while editing, and editing and cancellation are disabled while a save is in progress.
+
+Spaces and line breaks are preserved while typing commands. Saving trims each command, removes empty lines, and treats an empty command list as unassigned. Combination targets must exist, must be real keys, and cannot target the same key or repeat within that key. Invalid combinations in existing custom presets are shown with an explanation; the preset is preserved and can be edited to remove or correct them before saving.
 
 ### Saved presets
 
 Presets are stored in the browser's IndexedDB database `rts-keymap-viewer`, in the `presets` object store. Saved custom presets survive reloads in the same browser profile and origin; different hosts or ports have separate storage. Clearing the site's browser storage removes custom presets.
 
-**Bundled presets are refreshed from source every time the app loads.** Edits saved directly to a bundled preset apply for the current session and reset on reload. Use **New preset** to keep a customized version across reloads.
+**Bundled presets are refreshed from source every time the app loads.** Edits saved directly to a bundled preset apply for the current session and reset on reload. The app explains this beside the preset controls. Use **New preset** or **Save as custom** to keep a customized version across reloads. **Save as custom** saves the edited draft with a new custom ID and adds “(Custom)” to its name.
 
 The status message below the controls reports database loading, editing, saving, and errors. IndexedDB must be available for layouts to load and save.
 
@@ -44,6 +46,7 @@ Open the URL printed by Vite, normally `http://localhost:5173/RTS-Keymap-Viewer/
 | --- | --- |
 | `npm run dev` | Start the development server with hot module replacement. |
 | `npm run lint` | Run ESLint. |
+| `npm test` | Check bundled and custom combination validation with Node's built-in test runner. |
 | `npx tsc -b` | Check the application and Vite configuration types. |
 | `npm run build` | Run TypeScript checks and build static assets into `dist/`. |
 | `npm run preview` | Serve the production build locally after building. |
@@ -52,6 +55,7 @@ Before handing off changes, run:
 
 ```bash
 npm run lint
+npm test
 npx tsc -b
 npm run build
 ```
@@ -66,6 +70,8 @@ npm run build
 | `src/main.tsx` | React entry point with StrictMode. |
 | `src/data/defaultPresets.ts` | Bundled keyboard layouts and commands. |
 | `src/data/presets.ts` | Preset types, IndexedDB storage, seeding, and migration helpers. |
+| `src/data/presetValidation.ts` | Combination validation before saving and explanations for invalid saved combinations. |
+| `tests/presetValidation.test.ts` | Preset validation regression checks. |
 | `public/` | Static assets copied into the build. |
 | `vite.config.ts` | React plugin and deployment base path. |
 | `.github/workflows/deploy.yml` | Build and deployment to GitHub Pages. |
