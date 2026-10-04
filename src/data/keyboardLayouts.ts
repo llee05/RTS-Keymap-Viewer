@@ -1,10 +1,11 @@
 import type { KeyboardPreset, Keybind } from './presets';
+import { getKeyboardProfile, type KeyboardProfile } from './keyboardProfiles';
 
 export type KeyboardSettings = NonNullable<KeyboardPreset['keyboard']>;
 export type KeyboardShape = KeyboardSettings['shape'];
 export type LabelLayout = KeyboardSettings['labels'];
 export type KeyPosition = { rowIndex: number; keyIndex: number };
-export type DisplayKey = KeyPosition & { id: string; key: Keybind };
+export type DisplayKey = KeyPosition & { id: string; key: Keybind; placement?: { x: number; y: number } };
 type TemplateKey = { code?: string; units: number; height?: number };
 
 export const keyboardShapes: { value: KeyboardShape; label: string }[] = [
@@ -30,12 +31,13 @@ const usLabels: Record<string, string> = {
   Backspace: 'Backspace', Space: 'Space', ControlLeft: 'Ctrl', ControlRight: 'Ctrl',
   ShiftLeft: 'Shift', ShiftRight: 'Shift', AltLeft: 'Alt', AltRight: 'Alt',
   MetaLeft: 'Super', MetaRight: 'Super', ContextMenu: 'Menu',
+  Fn: 'Fn', Fn2: 'Fn2',
   ArrowUp: '↑', ArrowLeft: '←', ArrowDown: '↓', ArrowRight: '→',
   PrintScreen: 'PrtSc', ScrollLock: 'Scroll Lock', Pause: 'Pause',
   Insert: 'Insert', Home: 'Home', PageUp: 'Page Up', Delete: 'Delete', End: 'End', PageDown: 'Page Down',
   NumLock: 'Num Lock', NumpadDivide: 'Num /', NumpadMultiply: 'Num *',
   NumpadSubtract: 'Num -', NumpadAdd: 'Num +', NumpadEnter: 'Num Enter', NumpadDecimal: 'Num .',
-  ...Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`F${index + 1}`, `F${index + 1}`])),
+  ...Object.fromEntries(Array.from({ length: 16 }, (_, index) => [`F${index + 1}`, `F${index + 1}`])),
   ...Object.fromEntries(Array.from({ length: 10 }, (_, index) => [`Numpad${index}`, `Num ${index}`])),
 };
 
@@ -118,21 +120,35 @@ function getTemplate(shape: Exclude<KeyboardShape, 'original'>): TemplateKey[][]
 }
 
 export function getKeyLabel(key: Keybind, settings?: KeyboardSettings): string {
-  if (!key.code || !settings || settings.labels === 'original') return key.label;
+  const profileLabel = getKeyboardProfile(settings?.profileId)?.keys.find(({ code }) => code === key.code)?.label;
+  const fallback = profileLabel ?? key.label;
+  if (!key.code || !settings || settings.labels === 'original') return fallback;
   if (settings.labels === 'detected') {
     const detected = settings.detectedLabels?.[key.code];
-    return detected ? /^[a-z]$/.test(detected) ? detected.toUpperCase() : detected : key.label;
+    return detected ? /^[a-z]$/.test(detected) ? detected.toUpperCase() : detected : fallback;
   }
-  return localizedLabels[settings.labels][key.code] ?? key.label;
+  return profileLabel ?? localizedLabels[settings.labels][key.code] ?? fallback;
 }
 
 export function getDisplayRows(preset: KeyboardPreset): DisplayKey[][] {
   const originalRows = preset.rows.map((row, rowIndex) => row.map((key, keyIndex) => ({
     id: `${rowIndex}-${keyIndex}`, rowIndex, keyIndex, key,
   })));
+  const profile = getKeyboardProfile(preset.keyboard?.profileId);
   const shape = preset.keyboard?.shape ?? 'original';
+  if (!profile && shape === 'original') return originalRows;
+  const byCode = new Map(originalRows.flat().filter(({ key }) => !key.spacer && key.code).map((entry) => [entry.key.code, entry]));
+  if (profile) {
+    const rows = [...new Set(profile.keys.map(({ y }) => y))].sort((a, b) => a - b);
+    return rows.map((y) => profile.keys.filter((slot) => slot.y === y).sort((a, b) => a.x - b.x).flatMap((slot) => {
+      const entry = byCode.get(slot.code);
+      return entry ? [{
+        ...entry, placement: { x: slot.x, y: slot.y },
+        key: { ...entry.key, width: (slot.width * 74 - 10) / 64, height: (slot.height * 74 - 10) / 64 },
+      }] : [];
+    }));
+  }
   if (shape === 'original') return originalRows;
-  const byCode = new Map(originalRows.flat().filter(({ key }) => key.code).map((entry) => [entry.key.code, entry]));
   return getTemplate(shape).map((row, rowIndex) => row.map((slot, keyIndex) => {
     const entry = slot.code ? byCode.get(slot.code) : undefined;
     // Include gaps within wider keys so every template row aligns on the same grid.
@@ -163,7 +179,23 @@ export function setKeyboardShape(preset: KeyboardPreset, shape: KeyboardShape): 
       ...enriched.rows,
       ...Array.from({ length: Math.ceil(missingKeys.length / 14) }, (_, index) => missingKeys.slice(index * 14, (index + 1) * 14)),
     ],
-    keyboard: { labels: 'original', ...enriched.keyboard, shape },
+    keyboard: { labels: 'original', ...enriched.keyboard, shape, profileId: undefined },
+  };
+}
+
+export function setKeyboardProfile(preset: KeyboardPreset, profile: KeyboardProfile): KeyboardPreset {
+  const enriched = withKeyCodes(preset);
+  const existingCodes = new Set(enriched.rows.flat().filter((key) => !key.spacer).map((key) => key.code));
+  const missingKeys = profile.keys.filter(({ code }) => !existingCodes.has(code)).map(({ code, label }) => ({
+    code, label: label ?? usLabels[code] ?? code, hotkeys: [''],
+  }));
+  return {
+    ...enriched,
+    rows: [
+      ...enriched.rows,
+      ...Array.from({ length: Math.ceil(missingKeys.length / 14) }, (_, index) => missingKeys.slice(index * 14, (index + 1) * 14)),
+    ],
+    keyboard: { labels: 'original', ...enriched.keyboard, shape: profile.shape, profileId: profile.id },
   };
 }
 

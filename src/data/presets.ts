@@ -26,6 +26,7 @@ export type KeyboardPreset = {
     shape: 'original' | 'compact' | 'tkl' | 'full';
     labels: 'original' | 'qwerty' | 'azerty' | 'qwertz' | 'detected';
     detectedLabels?: Record<string, string>;
+    profileId?: string;
   };
 };
 

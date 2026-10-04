@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { loadPresets, savePreset, type KeyboardPreset } from './data/presets';
 import {
-  detectKeyboardLabels, getDisplayRows, getKeyLabel, setKeyboardShape, withKeyCodes,
+  detectKeyboardLabels, getDisplayRows, getKeyLabel, setKeyboardShape, setKeyboardProfile, withKeyCodes,
   type KeyboardShape, type LabelLayout, type KeyPosition,
 } from './data/keyboardLayouts';
+import { canIdentifyKeyboard, identifyKeyboard } from './data/keyboardDevice';
+import { getKeyboardProfile, getProfileSize, type KeyboardProfile } from './data/keyboardProfiles';
 import { KeyboardSetup } from './components/KeyboardSetup';
 import { KeyEditor } from './components/KeyEditor';
 
@@ -74,6 +76,7 @@ function App() {
   const [comboTargetKeyId, setComboTargetKeyId] = useState('');
   const [comboAction, setComboAction] = useState('');
   const [detecting, setDetecting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [listening, setListening] = useState(false);
   const [layoutStatus, setLayoutStatus] = useState('');
   const detectionRequest = useRef(0);
@@ -81,6 +84,8 @@ function App() {
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
   const visiblePreset = mode === 'edit' ? draftPreset : activePreset;
   const displayRows = visiblePreset ? getDisplayRows(visiblePreset) : [];
+  const visibleProfile = getKeyboardProfile(visiblePreset?.keyboard?.profileId);
+  const profileSize = visibleProfile ? getProfileSize(visibleProfile) : undefined;
   const shownKeyIds = new Set(displayRows.flat().filter(({ key }) => !key.spacer).map(({ id }) => id));
   const selectedKeybind = selectedKey ? visiblePreset?.rows[selectedKey.rowIndex]?.[selectedKey.keyIndex] : undefined;
   const selectedKeyId = selectedKey ? getKeyId(selectedKey.rowIndex, selectedKey.keyIndex) : null;
@@ -237,6 +242,7 @@ function App() {
   function resetKeyboardInteraction() {
     detectionRequest.current += 1;
     setDetecting(false);
+    setConnecting(false);
     setListening(false);
     setLayoutStatus('');
     setHoveredKeyId(null);
@@ -249,6 +255,48 @@ function App() {
   function changeKeyboardShape(shape: KeyboardShape) {
     setDraftPreset((current) => current ? setKeyboardShape(current, shape) : current);
     resetKeyboardInteraction();
+  }
+
+  function applyKeyboardProfile(profile: KeyboardProfile, identified: boolean) {
+    if (!activePreset) return;
+    resetKeyboardInteraction();
+    if (mode === 'edit') {
+      setDraftPreset((current) => current ? setKeyboardProfile(current, profile) : current);
+    } else {
+      const customPreset = createPresetFromTemplate(activePreset);
+      customPreset.name = `${activePreset.name} — ${profile.name.split(' · ')[0]}`;
+      setDraftPreset(setKeyboardProfile(customPreset, profile));
+      setMode('edit');
+      setDatabaseStatus('Editing a new preset');
+    }
+    setLayoutStatus(`${identified ? 'Identified' : 'Manually selected'} ${profile.name}. The board now matches its physical keys. Edit your commands, then save the preset.`);
+  }
+
+  function changeKeyboardModel(profileId: string) {
+    const profile = getKeyboardProfile(profileId);
+    if (profile) applyKeyboardProfile(profile, false);
+  }
+
+  async function connectKeyboard() {
+    const request = ++detectionRequest.current;
+    setConnecting(true);
+    setLayoutStatus('Choose your keyboard in the browser’s device picker…');
+    try {
+      const result = await identifyKeyboard();
+      if (request !== detectionRequest.current) return;
+      if (result.kind === 'matched') {
+        applyKeyboardProfile(result.profile, true);
+      } else if (result.kind === 'unknown') {
+        setLayoutStatus(`${result.name} (${result.identity}) has no matching profile yet. Choose a supported model, or create a preset with a generic shape. The current board is unchanged.`);
+      } else {
+        setLayoutStatus('No keyboard selected. Choose a supported model manually, or try connecting again.');
+      }
+    } catch (error) {
+      if (request !== detectionRequest.current) return;
+      setLayoutStatus(error instanceof Error ? error.message : 'Could not identify the keyboard. Choose a model manually.');
+    } finally {
+      if (request === detectionRequest.current) setConnecting(false);
+    }
   }
 
   function changeKeyboardLabels(labels: LabelLayout) {
@@ -273,7 +321,7 @@ function App() {
       setSelectedKey(null);
       setHoveredKeyId(null);
       setTooltipPosition(null);
-      setLayoutStatus('Keyboard labels detected. Check that they match your keyboard; choose its shape manually.');
+      setLayoutStatus('Keyboard labels detected. Check that they match your keyboard. The physical board is unchanged.');
     } catch (error) {
       if (request !== detectionRequest.current) return;
       setLayoutStatus(error instanceof Error
@@ -515,7 +563,7 @@ function App() {
                 <select
                   id="preset"
                   value={visiblePreset.id}
-                  disabled={mode === 'edit'}
+                  disabled={mode === 'edit' || connecting}
                   onChange={(event) => { resetKeyboardInteraction(); setActivePresetId(event.target.value); }}
                 >
                   {presets.map((preset) => (
@@ -534,10 +582,10 @@ function App() {
             <div className="mode-controls" aria-label="Preset actions">
               {mode === 'view' ? (
                 <>
-                  <button type="button" className="secondary-button" onClick={createPreset}>
+                  <button type="button" className="secondary-button" disabled={connecting} onClick={createPreset}>
                     <span aria-hidden="true">＋</span> New preset
                   </button>
-                  <button type="button" onClick={startEditing}>
+                  <button type="button" disabled={connecting} onClick={startEditing}>
                     <span aria-hidden="true">✦</span> Edit preset
                   </button>
                 </>
@@ -546,7 +594,7 @@ function App() {
                   <button type="button" className="secondary-button" onClick={cancelEditing}>
                     Cancel
                   </button>
-                  <button type="button" disabled={detecting} onClick={saveDraftPreset}>
+                  <button type="button" disabled={detecting || connecting} onClick={saveDraftPreset}>
                     Save preset
                   </button>
                 </>
@@ -589,10 +637,15 @@ function App() {
           settings={visiblePreset.keyboard}
           editing={mode === 'edit'}
           detecting={detecting}
+          connecting={connecting}
+          identificationAvailable={canIdentifyKeyboard()}
           listening={listening}
           status={layoutStatus}
           hiddenKeyCount={hiddenKeyCount}
           onShapeChange={changeKeyboardShape}
+          onModelChange={changeKeyboardModel}
+          onConnect={connectKeyboard}
+          onCancelConnect={() => { resetKeyboardInteraction(); setLayoutStatus('Keyboard identification cancelled.'); }}
           onLabelsChange={changeKeyboardLabels}
           onDetect={detectLabels}
           onListen={() => { setListening((current) => !current); setLayoutStatus(''); }}
@@ -633,16 +686,16 @@ function App() {
       )}
 
       <div className="keyboard-frame">
-        <div className="keyboard">
+        <div className={`keyboard ${visibleProfile ? 'keyboard-profile' : ''}`} style={profileSize}>
           {displayRows.map((row, displayRowIndex) => (
           <div
             className="keyboard-row"
             key={displayRowIndex}
-            style={visiblePreset?.keyboard && visiblePreset.keyboard.shape !== 'original' ? {
+            style={!visibleProfile && visiblePreset?.keyboard && visiblePreset.keyboard.shape !== 'original' ? {
               height: `${Math.min(1, ...row.filter(({ key }) => !key.spacer).map(({ key }) => key.height ?? 1)) * 64}px`,
             } : undefined}
           >
-            {row.map(({ key, rowIndex, keyIndex, id: keyId }) => {
+            {row.map(({ key, rowIndex, keyIndex, id: keyId, placement }) => {
               const width = `${(key.width ?? 1) * 64}px`;
               const height = `${(key.height ?? 1) * 64}px`;
               const label = getKeyLabel(key, visiblePreset?.keyboard);
@@ -662,7 +715,7 @@ function App() {
                 <div
                   className={`key ${mode === 'edit' ? 'key-editable' : ''} ${isSelected ? 'key-selected' : ''} ${isHighlighted ? 'key-combo-highlight' : ''}`}
                   key={keyId}
-                  style={{ width, height }}
+                  style={{ width, height, ...(placement ? { left: placement.x * 74, top: placement.y * 74 } : {}) }}
                   data-key-position={keyId}
                   data-key-code={key.code}
                   aria-label={keyLabels.get(keyId)}
@@ -675,7 +728,16 @@ function App() {
                       hideTooltip(keyId);
                     }
                   }}
-                  onFocus={(event) => showTooltip(keyId, event.currentTarget)}
+                  onFocus={(event) => {
+                    const target = event.currentTarget;
+                    setHoveredKeyId(keyId);
+                    setTooltipPosition(null);
+                    // Focus can scroll a distant key into view. Wait for that
+                    // scroll before showing its tooltip; later scrolls dismiss it.
+                    requestAnimationFrame(() => {
+                      if (document.activeElement === target) showTooltip(keyId, target);
+                    });
+                  }}
                   onBlur={() => hideTooltip(keyId)}
                   onClick={() => {
                     if (mode === 'edit') {

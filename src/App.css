@@ -59,6 +59,10 @@ h1 { margin: 0; color: #f7f9ff; font-size: clamp(1.75rem, 4vw, 2.6rem); line-hei
   gap: 10px;
 }
 
+.keyboard-profile { position: relative; display: block; min-width: 0; }
+.keyboard-profile .keyboard-row { display: contents; }
+.keyboard-profile .key { position: absolute; }
+
 .key {
   position: relative;
   height: 64px;
@@ -266,6 +270,8 @@ h1 { margin: 0; color: #f7f9ff; font-size: clamp(1.75rem, 4vw, 2.6rem); line-hei
 .setup-controls .listening-button { border-color: var(--success); color: var(--success); }
 .setup-controls :disabled { cursor: not-allowed; opacity: 0.55; }
 .setup-note { margin: 12px 0 0; color: var(--muted); font-size: 0.73rem; line-height: 1.5; }
+.device-controls + .setup-note { margin-bottom: 16px; }
+.profile-summary { margin: 0 0 16px; color: var(--accent-bright); font-size: 0.75rem; line-height: 1.5; }
 .layout-status { margin: 10px 0 0; color: var(--accent-bright); font-size: 0.75rem; line-height: 1.5; }
 .layout-status:empty { display: none; }
 .setup-controls :focus-visible, .close-editor:focus-visible, .combo-editor :focus-visible, .mode-controls button:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }

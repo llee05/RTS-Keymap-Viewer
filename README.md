@@ -9,7 +9,8 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 - Highlighting of related keys in two-key combinations.
 - Custom presets cloned from the active layout, with editable names, game labels, commands, and combinations.
 - Browser-local persistence through IndexedDB.
-- A keyboard layout prototype with compact (60%), tenkeyless, and full-size ANSI shapes; manual US QWERTY, French AZERTY, and German QWERTZ labels; and automatic character-label detection in supported browsers.
+- Browser-only keyboard identification through WebHID for supported Keychron models, rebuilding the board with their actual key positions, spacing, and sizes.
+- Manual model selection, generic compact (60%), tenkeyless, and full-size ANSI shapes; US QWERTY, French AZERTY, and German QWERTZ labels; and automatic character-label detection in supported browsers.
 - Physical-key selection in edit mode, including separate left/right modifiers, with an editor outside the horizontally scrolling board.
 - A dark interface with responsive controls and a horizontally scrollable keyboard on smaller screens.
 
@@ -25,15 +26,29 @@ Editing a preset changes the reference board. Configure the actual game bindings
 
 ### Keyboard layout prototype
 
-Select **New preset**, then use **Your keyboard** to choose a physical shape and character layout. **Detect my labels** uses the browser's Keyboard Map API where available (currently Chrome/Edge over HTTPS or localhost). If detection is unavailable, blocked, or returns no labels, choose a manual character layout. Detected labels are saved with the custom preset, so that saved board can still be viewed in a browser without the API. Detection is explicit and can be repeated when the system layout changes.
+Select **Connect keyboard** under **Your keyboard**, then choose your keyboard in the browser's device picker. This uses WebHID in desktop Chrome/Edge over HTTPS or localhost. The picker requests the QMK/VIA vendor interface; ordinary keyboard reports are protected by the browser, so many keyboards will not appear. Identification reads the selected device's USB vendor/product IDs and matches them to a local profile. It does not open the device or send firmware commands.
 
-Detection supplies character labels, not the keyboard's hardware model, dimensions, or keycap artwork. The supplied physical templates are ANSI; ISO, JIS, split, and custom hardware geometries are not included in this prototype. The original board remains available as **All saved keys**.
+A recognized model replaces the board's entire geometry, including gaps, Fn keys, and extra keys. Connecting from view mode creates a custom draft copied from the active preset; connecting during editing updates that draft. Edit the commands and select **Save preset**, or **Cancel** to restore the previous board. An unknown device, a cancelled picker, or denied access leaves the current board unchanged.
+
+The prototype includes these exact **ANSI, non-knob** models:
+
+| Model | USB vendor:product | Physical profile source |
+| --- | --- | --- |
+| Keychron V4 · 61 keys | `3434:0340` | [QMK V4 ANSI](https://github.com/qmk/qmk_firmware/blob/master/keyboards/keychron/v4/ansi/keyboard.json) |
+| Keychron V3 · 87 keys | `3434:0330` | [QMK V3 ANSI](https://github.com/qmk/qmk_firmware/blob/master/keyboards/keychron/v3/ansi/keyboard.json) |
+| Keychron V6 · 108 keys | `3434:0360` | [QMK V6 ANSI](https://github.com/qmk/qmk_firmware/blob/master/keyboards/keychron/v6/ansi/keyboard.json) |
+
+Profiles use QMK's physical coordinates and factory Windows base key positions, from the corresponding `keymaps/default/keymap.c` definitions. The default [QMK Raw HID usage page and usage](https://docs.qmk.fm/features/rawhid) determine the device-picker filter. ISO, JIS, knob, Max, split, and other models need separate verified profiles. Firmware remappings, Mac mode, and custom keycap artwork are not detected. Fn and firmware-only buttons can be edited by clicking even when they do not produce browser key events.
+
+If your keyboard is missing or WebHID is unavailable, use **Supported keyboard model** to try a profile manually. This works in any browser and is explicitly reported as manual selection. Alternatively, select **New preset**, then choose a **Generic keyboard shape**. The original board remains available as **All saved keys**. This browser-only prototype cannot determine arbitrary hardware geometry without a matching profile.
+
+**Detect my labels** separately uses the browser's Keyboard Map API where available (Chrome/Edge over HTTPS or localhost). If detection is unavailable, blocked, or returns no labels, choose a manual character layout. The model, shape, and labels are saved with the custom preset, so the board can be viewed later without WebHID, device access, or the Keyboard Map API. Connection and label detection are explicit actions and can be repeated when the keyboard or system layout changes.
 
 Changing character labels keeps commands on the same physical key positions. It does not translate a game's character-based bindings automatically. Choosing a smaller shape hides keys without deleting their commands or combinations; choose **All saved keys** to edit them. Additional keys needed for a larger template start unassigned.
 
 In edit mode, select **Press a key to edit**, then press one physical key. The app uses its position (`KeyboardEvent.code`) to select the corresponding displayed key. Escape cancels capture, Tab continues navigation, and typing in the command form works normally outside capture mode. Keys outside the selected shape and browser/system shortcuts may need to be selected by clicking. This selects a key to annotate; it does not record or apply game bindings.
 
-Shape, manual/detected labels, commands, and combinations are part of the draft. **Save preset** persists them together; **Cancel** discards them. Bundled presets still reset on reload, so use a custom preset to keep changes.
+Model, shape, manual/detected labels, commands, and combinations are part of the draft. **Save preset** persists them together; **Cancel** discards them. Bundled presets still reset on reload, so use a custom preset to keep changes.
 
 ### Saved presets
 
@@ -81,13 +96,15 @@ npm run build
 | `src/data/defaultPresets.ts` | Bundled keyboard layouts and commands. |
 | `src/data/presets.ts` | Preset types, IndexedDB storage, seeding, and migration helpers. |
 | `src/data/keyboardLayouts.ts` | Physical templates, character labels, browser detection, and mapping displayed keys to saved positions. |
-| `src/components/KeyboardSetup.tsx` | Keyboard shape, label detection, and physical-key selection controls. |
+| `src/data/keyboardProfiles.ts` | Verified hardware identities and physical model geometry. |
+| `src/data/keyboardDevice.ts` | WebHID chooser and exact model identification. |
+| `src/components/KeyboardSetup.tsx` | Device identification, model/shape selection, label detection, and physical-key selection controls. |
 | `src/components/KeyEditor.tsx` | Accessible command and combination editor above the board. |
 | `public/` | Static assets copied into the build. |
 | `vite.config.ts` | React plugin and deployment base path. |
 | `.github/workflows/deploy.yml` | Build and deployment to GitHub Pages. |
 
-To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. Keep those references in sync when changing a layout. The optional `Keybind.code` identifies the physical browser key, and optional `KeyboardPreset.keyboard` stores shape, label mode, and a detected-label snapshot. Legacy presets without those fields retain their original board; known original labels are matched to codes in memory. Shape changes project saved keys into templates and append any missing keys without reordering existing rows, keeping combination references valid. See [AGENTS.md](AGENTS.md) for contributor guidance.
+To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. Keep those references in sync when changing a layout. The optional `Keybind.code` identifies the physical browser key (or a profile-specific Fn/firmware-only key), and optional `KeyboardPreset.keyboard` stores a model profile ID, generic shape, label mode, and detected-label snapshot. Legacy presets without those fields retain their original board; known original labels are matched to codes in memory. Model and shape changes project saved keys into physical templates and append any missing keys without reordering existing rows, keeping combination references valid. To add hardware support, add a verified vendor/product identity and its complete geometry to `keyboardProfiles.ts`; avoid inferring a shape from a product name. See [AGENTS.md](AGENTS.md) for contributor guidance.
 
 ## Deployment
 
