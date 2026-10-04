@@ -1,11 +1,18 @@
 import './App.css';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { loadPresets, savePreset, type KeyboardPreset } from './data/presets';
 
 type AppMode = 'view' | 'edit';
 type SelectedKey = {
   rowIndex: number;
   keyIndex: number;
+};
+type TooltipPosition = {
+  keyId: string;
+  left: number;
+  top: number;
+  arrowLeft: number;
 };
 
 function getKeyId(rowIndex: number, keyIndex: number) {
@@ -57,6 +64,7 @@ function App() {
   const [draftPreset, setDraftPreset] = useState<KeyboardPreset | null>(null);
   const [selectedKey, setSelectedKey] = useState<SelectedKey | null>(null);
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null);
   const [comboTargetKeyId, setComboTargetKeyId] = useState('');
   const [comboAction, setComboAction] = useState('');
   const [databaseStatus, setDatabaseStatus] = useState('Loading local database...');
@@ -177,6 +185,25 @@ function App() {
       document.removeEventListener('pointerdown', closeEditorOnOutsideClick, true);
     };
   }, [mode, selectedKey]);
+
+  useEffect(() => {
+    if (!tooltipPosition) {
+      return;
+    }
+
+    function dismissTooltip() {
+      setHoveredKeyId(null);
+      setTooltipPosition(null);
+    }
+
+    window.addEventListener('scroll', dismissTooltip, true);
+    window.addEventListener('resize', dismissTooltip);
+
+    return () => {
+      window.removeEventListener('scroll', dismissTooltip, true);
+      window.removeEventListener('resize', dismissTooltip);
+    };
+  }, [tooltipPosition]);
 
   function createPreset() {
     if (!activePreset) {
@@ -358,6 +385,32 @@ function App() {
     });
   }
 
+  function showTooltip(keyId: string, keyElement: HTMLElement) {
+    const tooltipWidth = 210;
+    const viewportPadding = 8;
+    const keyBounds = keyElement.getBoundingClientRect();
+    const keyCenter = keyBounds.left + keyBounds.width / 2;
+    const left = Math.min(
+      Math.max(keyCenter - tooltipWidth / 2, viewportPadding),
+      window.innerWidth - tooltipWidth - viewportPadding,
+    );
+
+    setHoveredKeyId(keyId);
+    setTooltipPosition({
+      keyId,
+      left,
+      top: keyBounds.bottom + 12,
+      arrowLeft: keyCenter - left,
+    });
+  }
+
+  function hideTooltip(keyId: string) {
+    setHoveredKeyId((currentKeyId) => (currentKeyId === keyId ? null : currentKeyId));
+    setTooltipPosition((currentPosition) =>
+      currentPosition?.keyId === keyId ? null : currentPosition,
+    );
+  }
+
   return (
     <main className="app">
       <header className="app-header">
@@ -494,8 +547,14 @@ function App() {
                   data-key-position={keyId}
                   role={mode === 'edit' ? 'button' : undefined}
                   tabIndex={0}
-                  onMouseEnter={() => setHoveredKeyId(keyId)}
-                  onMouseLeave={() => setHoveredKeyId((currentKeyId) => (currentKeyId === keyId ? null : currentKeyId))}
+                  onMouseEnter={(event) => showTooltip(keyId, event.currentTarget)}
+                  onMouseLeave={(event) => {
+                    if (document.activeElement !== event.currentTarget) {
+                      hideTooltip(keyId);
+                    }
+                  }}
+                  onFocus={(event) => showTooltip(keyId, event.currentTarget)}
+                  onBlur={() => hideTooltip(keyId)}
                   onClick={() => {
                     if (mode === 'edit') {
                       setSelectedKey({ rowIndex, keyIndex });
@@ -598,18 +657,30 @@ function App() {
                       )}
                     </>
                   ) : (
-                    <div className="tooltip" role="tooltip">
-                      <strong>{key.label}</strong>
-                      {key.hotkeys.map((hotkey) => (
-                        <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
-                      ))}
-                      {key.combinations?.map((combination) => (
-                        <p className="combo-tooltip" key={combination.keyId}>
-                          {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
-                          {combination.action ? `: ${combination.action}` : ': No action specified'}
-                        </p>
-                      ))}
-                    </div>
+                    tooltipPosition?.keyId === keyId &&
+                    createPortal(
+                      <div
+                        className="tooltip"
+                        role="tooltip"
+                        style={{
+                          left: tooltipPosition.left,
+                          top: tooltipPosition.top,
+                          '--tooltip-arrow-left': `${tooltipPosition.arrowLeft}px`,
+                        } as React.CSSProperties}
+                      >
+                        <strong>{key.label}</strong>
+                        {key.hotkeys.map((hotkey) => (
+                          <p key={hotkey || `${key.label}-empty`}>{hotkey || 'Unassigned'}</p>
+                        ))}
+                        {key.combinations?.map((combination) => (
+                          <p className="combo-tooltip" key={combination.keyId}>
+                            {key.label} + {keyLabels.get(combination.keyId) ?? combination.keyId}
+                            {combination.action ? `: ${combination.action}` : ': No action specified'}
+                          </p>
+                        ))}
+                      </div>,
+                      document.body,
+                    )
                   )}
                 </div>
               );
