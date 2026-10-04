@@ -6,14 +6,18 @@ RTS Keymap Viewer is a browser-only React 19 and TypeScript 6 application built 
 
 ## Code map
 
-- `src/App.tsx` owns preset selection, view/edit modes, draft cloning, key editors, combination highlighting, and tooltip positioning. The current UI is implemented in this component.
+- `src/App.tsx` owns preset selection, draft state, import/export, saving/deletion, and component coordination.
+- `src/components/` contains preset controls, keyboard/search rendering, key editors, portal tooltips, and a reusable native dialog with focus restoration.
 - `src/App.css` styles the app, keyboard, editors, tooltips, and responsive layout. `src/index.css` defines global styles and theme variables.
 - `src/main.tsx` mounts the application in React StrictMode.
 - `src/data/defaultPresets.ts` is the source of bundled layouts and commands.
 - `src/data/presets.ts` defines `KeyboardPreset`, `Keybind`, and `KeyCombination`, and handles IndexedDB loading, saving, seeding, and migration helpers.
+- `src/data/presetEditing.ts` handles draft cloning, custom IDs, updates, and command normalization; `keyboard.ts` handles key labels, combinations, and search matching.
+- `src/data/presetTransfer.ts` validates imported JSON and serializes backups. Imports always create new custom IDs and save batches atomically.
+- `tests/*.test.ts` contains Node regression tests. `tests/browser/app.spec.ts` and `playwright.config.ts` cover desktop/mobile browser flows.
 - `public/` contains static assets; `src/assets/` contains source assets.
 - `vite.config.ts` sets the React plugin and `/RTS-Keymap-Viewer/` base path.
-- `.github/workflows/deploy.yml` builds and deploys `dist/` to GitHub Pages on pushes to `main` and manual runs, using Node.js 22.
+- `.github/workflows/deploy.yml` runs lint, Node tests, the build, and browser tests on pull requests, pushes to `main`, and manual runs. Pushes and manual runs deploy `dist/` after checks pass, using Node.js 22.
 
 ## Preset data and persistence
 
@@ -42,7 +46,7 @@ RTS Keymap Viewer is a browser-only React 19 and TypeScript 6 application built 
 
 Install the locked dependencies with `npm ci`, then use `npm run dev`. The local URL normally includes `/RTS-Keymap-Viewer/`. `npm run build` runs `tsc -b` followed by Vite and outputs `dist/`; `npm run preview` serves that build.
 
-Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later, to satisfy the locked Vite and ESLint requirements. `npm test` uses Node's built-in test runner to check preset combination validation.
+Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later, to satisfy the locked Vite and ESLint requirements. `npm test` uses Node's built-in test runner. `npm run test:e2e` uses Playwright against the production build; install Chromium with `npx playwright install chromium` once and leave preview port 4173 free.
 
 ## Validation
 
@@ -53,13 +57,14 @@ npm run lint
 npm test
 npx tsc -b
 npm run build
+npm run test:e2e
 ```
 
 Use a Node.js version supported by the installed Vite release. If a full build cannot run because of the local runtime, report that clearly and still run the independent TypeScript and lint checks.
 
 For UI or persistence changes, also check the affected behavior in the browser: hover and keyboard focus, combination highlighting, new/edit/save/cancel flows, custom preset persistence after reload, and small-screen scrolling as relevant. Use a custom preset when checking persistence, since bundled presets reset on load. Exercise load/save error handling when changing storage code.
 
-Keep the Vite base path aligned with the hosting path when changing deployment configuration. The Pages workflow currently runs the build; lint is a separate local check.
+Keep the Vite base path aligned with the hosting path when changing deployment configuration. The Pages workflow runs lint, Node tests, the build, and desktop/mobile Chromium browser tests before deployment. Pull requests run checks without deploying.
 
 ## Git workflow
 
