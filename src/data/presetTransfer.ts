@@ -1,4 +1,4 @@
-import type { Keybind, KeyboardPreset } from './presets.ts';
+import type { Keybind, KeyboardPreset, KeyCombination } from './presets.ts';
 import { validatePreset } from './presetValidation.ts';
 import { createCustomPreset, normalizePreset } from './presetEditing.ts';
 
@@ -38,10 +38,15 @@ function readKey(value: unknown, field: string): Keybind {
     if (!Array.isArray(data.combinations)) throw new Error(`${field}.combinations must be a list.`);
     key.combinations = data.combinations.map((value) => {
       const combination = record(value, `${field}.combinations`);
-      return {
+      const parsed: KeyCombination = {
         keyId: string(combination.keyId, `${field}.combinations.keyId`),
         action: string(combination.action, `${field}.combinations.action`),
       };
+      if (combination.additionalKeyIds !== undefined) {
+        if (!Array.isArray(combination.additionalKeyIds)) throw new Error(`${field}.combinations.additionalKeyIds must be a key list.`);
+        parsed.additionalKeyIds = combination.additionalKeyIds.map((id) => string(id, `${field}.combinations.additionalKeyIds`));
+      }
+      return parsed;
     });
   }
   if (key.spacer && key.combinations?.length) throw new Error(`${field}: spacers cannot have combinations.`);

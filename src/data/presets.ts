@@ -14,6 +14,7 @@ export type Keybind = {
 
 export type KeyCombination = {
   keyId: string;
+  additionalKeyIds?: string[];
   action: string;
 };
 
@@ -79,7 +80,10 @@ function cloneKeybind(keybind: Keybind): Keybind {
   return {
     ...keybind,
     hotkeys: [...keybind.hotkeys],
-    combinations: keybind.combinations?.map((combination) => ({ ...combination })),
+    combinations: keybind.combinations?.map((combination) => ({
+      ...combination,
+      ...(combination.additionalKeyIds ? { additionalKeyIds: [...combination.additionalKeyIds] } : {}),
+    })),
   };
 }
 

@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import type { Keybind } from '../data/presets';
 import type { KeyOption } from '../data/keyboard';
+import { getCombinationLabel, getCombinationTargets } from '../data/keyboard';
 import { Dialog } from './Dialog';
 
 type Props = {
@@ -22,7 +23,7 @@ export function KeyEditor({ keybind, keyId, label, options, busy, trigger, onClo
   const targetSelectId = useId();
   const actionId = useId();
   const labels = new Map(options.map((option) => [option.id, option.label]));
-  const availableTargets = options.filter((option) => option.id !== keyId && !keybind.combinations?.some((combination) => combination.keyId === option.id));
+  const availableTargets = options.filter((option) => option.id !== keyId && !keybind.combinations?.some((combination) => combination.keyId === option.id && getCombinationTargets(combination).length === 1));
 
   function addCombination() {
     if (!action.trim() || !availableTargets.some((option) => option.id === targetId)) return;
@@ -59,14 +60,14 @@ export function KeyEditor({ keybind, keyId, label, options, busy, trigger, onClo
             <ul>
               {keybind.combinations.map((combination, index) => (
                 <li key={`${combination.keyId}-${index}`}>
-                  <span>{label} + {labels.get(combination.keyId) ?? combination.keyId}</span>
+                  <span>{getCombinationLabel(label, combination, labels)}</span>
                   <input
-                    aria-label={`${label} + ${labels.get(combination.keyId) ?? combination.keyId} action`}
+                    aria-label={`${getCombinationLabel(label, combination, labels)} action`}
                     value={combination.action}
                     placeholder="Action"
                     onChange={(event) => onChange({ ...keybind, combinations: keybind.combinations?.map((current, currentIndex) => currentIndex === index ? { ...current, action: event.target.value } : current) })}
                   />
-                  <button type="button" aria-label={`Remove ${label} + ${labels.get(combination.keyId) ?? combination.keyId} combination`} onClick={() => onChange({ ...keybind, combinations: keybind.combinations?.filter((_, currentIndex) => currentIndex !== index) })}>Remove</button>
+                  <button type="button" aria-label={`Remove ${getCombinationLabel(label, combination, labels)} combination`} onClick={() => onChange({ ...keybind, combinations: keybind.combinations?.filter((_, currentIndex) => currentIndex !== index) })}>Remove</button>
                 </li>
               ))}
             </ul>

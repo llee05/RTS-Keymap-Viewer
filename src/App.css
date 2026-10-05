@@ -167,6 +167,17 @@ h1 { margin: 0; color: #f7f9ff; font-size: clamp(1.75rem, 4vw, 2.6rem); line-hei
 .key-editor fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 :is(.command-search, .key-editor) :is(input, select, textarea):focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 
+.hotkey-recorder input { width: 100%; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #344057; border-radius: 9px; background: #0d121b; color: var(--text); }
+.hotkey-recorder input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.hotkey-recorder .editor-help { line-height: 1.5; }
+.hotkey-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 64px; margin: 0 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: #0b1018; color: var(--muted); font-size: 0.85rem; }
+.hotkey-preview kbd { padding: 7px 10px; border: 1px solid #586da4; border-radius: 6px; background: #202838; color: var(--accent-bright); font: inherit; font-weight: 700; box-shadow: 0 2px 0 #090d14; }
+.hotkey-preview > span:not(.hotkey-preview-key) { flex-basis: 100%; font-size: 0.78rem; }
+.hotkey-preview-key { display: inline-flex; align-items: center; gap: 8px; }
+.hotkey-preview-key i { font-style: normal; }
+.hotkey-recorder [aria-pressed="true"] { border-color: var(--success); color: var(--success); }
+.hotkey-recorder .hotkey-conflict { margin-top: 12px; color: #f2ce77; }
+
 .key-selected {
   background: linear-gradient(145deg, #183c39, #102927);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.07), 0 3px 0 #071311, 0 0 18px rgba(66, 214, 164, 0.16);

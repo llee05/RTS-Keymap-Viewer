@@ -6,7 +6,8 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 
 - One bundled preset: **Age of Empires IV Default**, including function keys, arrow keys, and keys with different widths and heights.
 - Command tooltips on key hover or keyboard focus.
-- Highlighting of related keys in two-key combinations.
+- An **Add hotkey** button that records pressed keys and combinations and places commands on the keyboard automatically.
+- Highlighting of every participating key in combinations, including shortcuts such as Ctrl+Shift+R.
 - Command and combination search, with matching keys highlighted and a **Next match** button to jump between them.
 - Persistent markers for assigned commands and combinations.
 - Custom presets cloned from the active layout, with editable names, game labels, commands, and combinations.
@@ -20,16 +21,18 @@ Editing a preset changes the reference board. Configure the actual game bindings
 ## Using the viewer
 
 1. Choose a layout from **Active layout**. Hover over a key, tap it, or focus it with Tab to see its commands and combinations. Press Escape to dismiss a tooltip. Scrolling the page or keyboard, or resizing the window, also dismisses it.
-2. Select **New preset** to copy the active layout, or **Edit preset** to edit it directly.
-3. Change the preset's **Name** and **Game** as needed. Click a key, or focus it and press Enter or Space, to open its editor.
-4. Enter commands one per line in the editor dialog. To add a combination, choose another key, enter its action, and select **Add combination**. Existing combination actions can be edited or removed. Duplicate labels are distinguished in the picker, such as Left Ctrl and Right Ctrl. Select **Close editor**, or press Escape, to return focus to the key. Closing the editor keeps changes in the draft; **Cancel** discards the whole draft.
+2. Select **Add hotkey**, enter a **Command**, and select **Record hotkey**. Press a key or hold a combination together, then release all keys. The dialog previews the detected keys, including Left/Right modifiers. Select **Add hotkey** in the dialog to place the command on those keys and start a draft. Single-key commands are appended; an existing combination shows its current action and offers **Replace hotkey**. Cancelling the dialog leaves the layout unchanged.
+3. Add more hotkeys with the same button. Change the draft's **Name** and **Game** as needed. You can also select **New preset** to copy the active layout, or **Edit preset** to edit it directly.
+4. To change or remove existing entries, click a key, or focus it and press Enter or Space, to open its editor. Enter commands one per line. To add a two-key combination manually, choose another key, enter its action, and select **Add combination**. Existing combination actions can be edited or removed, including recorded combinations with multiple modifiers. Duplicate labels are distinguished in the picker, such as Left Ctrl and Right Ctrl. Select **Close editor**, or press Escape, to return focus to the key. Closing the editor keeps changes in the draft; **Cancel** discards the whole draft.
 5. Select **Save preset** to store a custom draft, or **Cancel** to discard it and return to the original layout. When editing a bundled layout, choose **Save as custom** to keep your changes across reloads, or **Save for this session** for temporary changes. Layout switching is disabled while editing, and editing and cancellation are disabled while a save is in progress.
 
-Spaces and line breaks are preserved while typing commands. Saving trims each command, removes empty lines, and treats an empty command list as unassigned. Combination targets must exist, must be real keys, and cannot target the same key or repeat within that key. Invalid combinations in existing custom presets are shown with an explanation; the preset is preserved and can be edited to remove or correct them before saving.
+Recording only listens while the recording button is focused and active; typing the command does not record a hotkey. During recording, Tab, Escape, Enter, and Space are treated as bindings. Release all keys to finish recording and resume normal dialog navigation, or select **Stop recording**. Recording uses physical keyboard codes matched to the displayed layout (the bundled board uses US QWERTY positions). Keys that are absent or ambiguous in the layout are rejected; keys intercepted by the operating system or browser cannot be recorded. Touch-only devices can use the individual key editors; recording requires a physical keyboard.
+
+Spaces and line breaks are preserved while typing in key editors. Saving trims each command, removes empty lines, and treats an empty command list as unassigned. Combination targets must exist, must be real keys, and cannot target the owning key or repeat within a combination. Each complete combination must be unique on its owning key. Invalid combinations in existing custom presets are shown with an explanation; the preset is preserved and can be edited to remove or correct them before saving.
 
 ### Finding commands
 
-Use **Search commands or keys** to search the current layout's key labels, commands, and combination actions. Search ignores case and extra spaces. A matching combination highlights both participating keys. **Next match** cycles through the matching keys and scrolls them into view; **Clear search** removes the highlights. Blue markers indicate assigned commands and purple markers indicate combinations, including when search is empty.
+Use **Search commands or keys** to search the current layout's key labels, commands, and combination actions. Search ignores case and extra spaces. A matching combination highlights every participating key. **Next match** cycles through the matching keys and scrolls them into view; **Clear search** removes the highlights. Blue markers indicate assigned commands and purple markers indicate combinations, including when search is empty.
 
 ### Backups and preset management
 
@@ -98,6 +101,7 @@ Storage unit tests drive database request and transaction events through a contr
 | `src/components/Keyboard.tsx` | Keyboard buttons, assignment markers, combination/search highlighting, and tooltip lifecycle. |
 | `src/components/CommandSearch.tsx` | Search input, result count, and navigation controls. |
 | `src/components/KeyEditor.tsx` | Command and combination editing in a dialog. |
+| `src/components/HotkeyRecorder.tsx` | Command entry, focused key recording, and detected binding previews. |
 | `src/components/KeyTooltip.tsx` | Portal tooltips positioned within the viewport and linked to keys. |
 | `src/components/Dialog.tsx` | Native modal dialog lifecycle, Tab containment, dismissal, and focus restoration. |
 | `src/App.css` | App layout, keyboard, editors, tooltips, and responsive styles. |
@@ -108,6 +112,7 @@ Storage unit tests drive database request and transaction events through a contr
 | `src/data/presetValidation.ts` | Combination validation before saving and explanations for invalid saved combinations. |
 | `src/data/presetEditing.ts` | Deep cloning, draft updates, custom IDs, and command normalization. |
 | `src/data/keyboard.ts` | Key IDs, disambiguated labels, related keys, and search matching. |
+| `src/data/hotkeyCapture.ts` | Physical key matching, combination conflict detection, and recorded draft assignments. |
 | `src/data/presetTransfer.ts` | Backup serialization and validation of imported JSON. |
 | `tests/*.test.ts` | Node regression checks for data and draft behavior. |
 | `tests/browser/app.spec.ts` | Browser checks for interactions, backups, persistence, error handling, and accessibility. |
@@ -116,7 +121,7 @@ Storage unit tests drive database request and transaction events through a contr
 | `vite.config.ts` | React plugin and deployment base path. |
 | `.github/workflows/deploy.yml` | Build and deployment to GitHub Pages. |
 
-To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. Keep those references in sync when changing a layout. See [AGENTS.md](AGENTS.md) for contributor guidance.
+To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. `KeyCombination.keyId` identifies the first target, and optional `additionalKeyIds` stores the remaining targets for combinations with three or more keys. Existing two-key presets and version 1 backups remain compatible. Keep those references in sync when changing a layout. See [AGENTS.md](AGENTS.md) for contributor guidance.
 
 ## Deployment
 

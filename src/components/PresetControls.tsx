@@ -13,6 +13,7 @@ type Props = {
   onSelect: (id: string) => void;
   onNew: () => void;
   onEdit: () => void;
+  onAddHotkey: (trigger: HTMLButtonElement) => void;
   onCancel: () => void;
   onSave: (asCustom?: boolean) => void;
   onFieldChange: (field: 'name' | 'game', value: string) => void;
@@ -23,7 +24,7 @@ type Props = {
 
 export function PresetControls({
   presets, preset, editing, bundled, busy, saving, validationErrors, pickerRef,
-  onSelect, onNew, onEdit, onCancel, onSave, onFieldChange, onImport, onExport, onDelete,
+  onSelect, onNew, onEdit, onAddHotkey, onCancel, onSave, onFieldChange, onImport, onExport, onDelete,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   return (
@@ -40,6 +41,7 @@ export function PresetControls({
           <span className="game-badge">{preset.game}</span>
         </div>
         <div className="mode-controls" aria-label="Preset actions">
+          <button type="button" disabled={busy} onClick={(event) => onAddHotkey(event.currentTarget)}>Add hotkey</button>
           {editing ? (
             <>
               <button type="button" className="secondary-button" disabled={busy} onClick={onCancel}>Cancel</button>
@@ -49,7 +51,7 @@ export function PresetControls({
           ) : (
             <>
               <button type="button" className="secondary-button" disabled={busy} onClick={onNew}>＋ New preset</button>
-              <button type="button" disabled={busy} onClick={onEdit}>Edit preset</button>
+              <button type="button" className="secondary-button" disabled={busy} onClick={onEdit}>Edit preset</button>
             </>
           )}
         </div>

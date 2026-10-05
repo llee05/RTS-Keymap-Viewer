@@ -5,10 +5,12 @@ import { defaultPresets } from './data/defaultPresets';
 import { getPresetValidationErrors } from './data/presetValidation';
 import { clonePreset, createCustomPreset, normalizePreset, updatePresetKey, type KeyPosition } from './data/presetEditing';
 import { getKeyId, getKeyOptions } from './data/keyboard';
+import { assignRecordedHotkey } from './data/hotkeyCapture';
 import { MAX_IMPORT_BYTES, parsePresetImport, serializePresets } from './data/presetTransfer';
 import { PresetControls } from './components/PresetControls';
 import { Keyboard } from './components/Keyboard';
 import { KeyEditor } from './components/KeyEditor';
+import { HotkeyRecorder } from './components/HotkeyRecorder';
 import { Dialog } from './components/Dialog';
 
 type EditingKey = KeyPosition & { trigger: HTMLButtonElement };
@@ -22,6 +24,7 @@ function App() {
   const [activePresetId, setActivePresetId] = useState('aoe4-default');
   const [draft, setDraft] = useState<KeyboardPreset | null>(null);
   const [editingKey, setEditingKey] = useState<EditingKey | null>(null);
+  const [hotkeyTrigger, setHotkeyTrigger] = useState<HTMLButtonElement | null>(null);
   const [query, setQuery] = useState('');
   const [operation, setOperation] = useState<Operation>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
@@ -105,6 +108,13 @@ function App() {
     setDraft((current) => current ? updatePresetKey(current, editingKey, () => keybind) : current);
   }
 
+  function addHotkey(keyIds: string[], command: string) {
+    if (!visiblePreset || operationInProgress.current) return;
+    setDraft(assignRecordedHotkey(draft ?? clonePreset(visiblePreset), keyIds, command));
+    setHotkeyTrigger(null);
+    setStatus('Hotkey added to draft. Save the preset to keep your changes.');
+  }
+
   async function importPresets(file: File) {
     if (draft || !beginOperation('import', 'Importing presets...')) return;
     try {
@@ -178,6 +188,7 @@ function App() {
           onSelect={(id) => { if (!operationInProgress.current) setActivePresetId(id); }}
           onNew={() => startEditing(true)}
           onEdit={() => startEditing()}
+          onAddHotkey={(trigger) => { if (!operationInProgress.current) setHotkeyTrigger(trigger); }}
           onCancel={cancelEditing}
           onSave={saveDraft}
           onFieldChange={(field, value) => setDraft((current) => current ? { ...current, [field]: value } : current)}
@@ -188,11 +199,14 @@ function App() {
       )}
       <div className="status-row">
         <p className={`database-status ${status.startsWith('Could not') ? 'status-error' : ''}`} aria-live="polite"><span aria-hidden="true" />{status}</p>
-        <p className="interaction-hint">Hover, tap, or focus a key to view its commands</p>
+        <p className="interaction-hint">{draft ? 'Use Add hotkey to record a binding, or select a key to edit' : 'Hover, tap, or focus a key to view its commands'}</p>
       </div>
       {visiblePreset && <Keyboard key={`${visiblePreset.id}-${!!draft}`} preset={visiblePreset} editing={!!draft} busy={busy} selected={editingKey} query={query} onQueryChange={setQuery} onEditKey={(position, trigger) => { if (!operationInProgress.current) setEditingKey({ ...position, trigger }); }} />}
       {editingKey && selectedKeybind && (
         <KeyEditor key={selectedId} keybind={selectedKeybind} keyId={selectedId} label={options.find((option) => option.id === selectedId)?.label ?? selectedKeybind.label} options={options} busy={busy} trigger={editingKey.trigger} onClose={() => { if (!operationInProgress.current) setEditingKey(null); }} onChange={changeKey} />
+      )}
+      {hotkeyTrigger && visiblePreset && (
+        <HotkeyRecorder preset={visiblePreset} trigger={hotkeyTrigger} onClose={() => setHotkeyTrigger(null)} onAdd={addHotkey} />
       )}
       {pendingDelete && (
         <Dialog title="Delete preset?" returnFocusTo={pendingDelete.trigger} busy={busy} onClose={() => { if (!operationInProgress.current) setPendingDelete(null); }}>

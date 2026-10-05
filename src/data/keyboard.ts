@@ -1,9 +1,17 @@
-import type { KeyboardPreset } from './presets.ts';
+import type { KeyboardPreset, KeyCombination } from './presets.ts';
 
 export type KeyOption = { id: string; label: string };
 
 export function getKeyId(rowIndex: number, keyIndex: number): string {
   return `${rowIndex}-${keyIndex}`;
+}
+
+export function getCombinationTargets(combination: KeyCombination): string[] {
+  return [combination.keyId, ...(combination.additionalKeyIds ?? [])];
+}
+
+export function getCombinationLabel(label: string, combination: KeyCombination, labels: Map<string, string>): string {
+  return [label, ...getCombinationTargets(combination).map((id) => labels.get(id) ?? id)].join(' + ');
 }
 
 function ordinal(value: number): string {
@@ -41,8 +49,8 @@ export function getRelatedKeyIds(preset: KeyboardPreset, keyId: string | null): 
     if (key.spacer) return;
     const currentId = getKeyId(rowIndex, keyIndex);
     key.combinations?.forEach((combination) => {
-      if (currentId === keyId) related.add(combination.keyId);
-      if (combination.keyId === keyId) related.add(currentId);
+      const participants = [currentId, ...getCombinationTargets(combination)];
+      if (participants.includes(keyId)) participants.forEach((id) => related.add(id));
     });
   }));
   return related;
@@ -59,9 +67,9 @@ export function findMatchingKeys(preset: KeyboardPreset, query: string): Set<str
     const keyId = getKeyId(rowIndex, keyIndex);
     if ([labels.get(keyId) ?? key.label, ...key.hotkeys].some(containsQuery)) matches.add(keyId);
     key.combinations?.forEach((combination) => {
-      if (containsQuery(`${labels.get(keyId)} ${labels.get(combination.keyId) ?? ''} ${combination.action}`)) {
+      if (containsQuery(`${getCombinationLabel(labels.get(keyId) ?? key.label, combination, labels)} ${combination.action}`)) {
         matches.add(keyId);
-        if (labels.has(combination.keyId)) matches.add(combination.keyId);
+        getCombinationTargets(combination).forEach((id) => { if (labels.has(id)) matches.add(id); });
       }
     });
   }));

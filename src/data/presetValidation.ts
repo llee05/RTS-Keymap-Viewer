@@ -1,4 +1,5 @@
 import type { Keybind, KeyboardPreset } from './presets.ts';
+import { getCombinationTargets } from './keyboard.ts';
 
 export function getPresetValidationErrors(preset: KeyboardPreset): string[] {
   const keys = new Map<string, Keybind>(
@@ -13,21 +14,27 @@ export function getPresetValidationErrors(preset: KeyboardPreset): string[] {
     const keyName = `${key.label || 'Blank key'} (${keyId})`;
 
     for (const combination of key.combinations ?? []) {
-      const target = keys.get(combination.keyId);
-
-      if (!target) {
-        errors.push(`${keyName}: combination target ${combination.keyId} does not exist.`);
-      } else if (target.spacer) {
-        errors.push(`${keyName}: a combination cannot target a spacer.`);
-      } else if (combination.keyId === keyId) {
-        errors.push(`${keyName}: a combination cannot target itself.`);
+      const targetIds = getCombinationTargets(combination);
+      const seen = new Set<string>();
+      for (const targetId of targetIds) {
+        const target = keys.get(targetId);
+        if (!target) {
+          errors.push(`${keyName}: combination target ${targetId} does not exist.`);
+        } else if (target.spacer) {
+          errors.push(`${keyName}: a combination cannot target a spacer.`);
+        } else if (targetId === keyId) {
+          errors.push(`${keyName}: a combination cannot target itself.`);
+        }
+        if (seen.has(targetId)) errors.push(`${keyName}: combination target ${targetId} is repeated.`);
+        seen.add(targetId);
       }
 
-      if (targets.has(combination.keyId)) {
-        errors.push(`${keyName}: combination target ${combination.keyId} is repeated.`);
+      const signature = [...targetIds].sort().join(',');
+      if (targets.has(signature)) {
+        errors.push(`${keyName}: combination target ${targetIds.join(' + ')} is repeated.`);
       }
 
-      targets.add(combination.keyId);
+      targets.add(signature);
     }
   }
 

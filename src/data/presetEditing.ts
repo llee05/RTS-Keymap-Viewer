@@ -8,7 +8,10 @@ export function clonePreset(preset: KeyboardPreset): KeyboardPreset {
     rows: preset.rows.map((row) => row.map((key) => ({
       ...key,
       hotkeys: [...key.hotkeys],
-      combinations: key.combinations?.map((combination) => ({ ...combination })),
+      combinations: key.combinations?.map((combination) => ({
+        ...combination,
+        ...(combination.additionalKeyIds ? { additionalKeyIds: [...combination.additionalKeyIds] } : {}),
+      })),
     }))),
   };
 }

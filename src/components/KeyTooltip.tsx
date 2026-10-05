@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Keybind } from '../data/presets';
+import { getCombinationLabel } from '../data/keyboard';
 
 type Props = {
   id: string;
@@ -42,7 +43,7 @@ export function KeyTooltip({ id, anchor, keybind, label, labels, onMouseEnter, o
         {keybind.hotkeys.map((command, index) => <p key={index}>{command || 'Unassigned'}</p>)}
         {keybind.combinations?.map((combination, index) => (
           <p className="combo-tooltip" key={`${combination.keyId}-${index}`}>
-            {label} + {labels.get(combination.keyId) ?? combination.keyId}: {combination.action || 'No action specified'}
+            {getCombinationLabel(label, combination, labels)}: {combination.action || 'No action specified'}
           </p>
         ))}
       </div>
