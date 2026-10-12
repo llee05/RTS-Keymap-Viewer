@@ -1,19 +1,19 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Keybind } from '../data/presets';
-import { getCombinationLabel } from '../data/keyboard';
+import type { CommandEntry } from '../data/keyboard';
 
 type Props = {
   id: string;
   anchor: HTMLButtonElement;
   keybind: Keybind;
   label: string;
-  labels: Map<string, string>;
+  combinations: CommandEntry[];
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 };
 
-export function KeyTooltip({ id, anchor, keybind, label, labels, onMouseEnter, onMouseLeave }: Props) {
+export function KeyTooltip({ id, anchor, keybind, label, combinations, onMouseEnter, onMouseLeave }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number; arrowLeft: number; above: boolean } | null>(null);
 
@@ -40,10 +40,12 @@ export function KeyTooltip({ id, anchor, keybind, label, labels, onMouseEnter, o
     >
       <div className="tooltip-content">
         <strong>{label}</strong>
-        {keybind.hotkeys.map((command, index) => <p key={index}>{command || 'Unassigned'}</p>)}
-        {keybind.combinations?.map((combination, index) => (
-          <p className="combo-tooltip" key={`${combination.keyId}-${index}`}>
-            {getCombinationLabel(label, combination, labels)}: {combination.action || 'No action specified'}
+        {keybind.hotkeys.filter((command) => command.trim()).map((command, index) => <p key={index}>{command}</p>)}
+        {!keybind.hotkeys.some((command) => command.trim()) && !combinations.length && <p>Unassigned</p>}
+        {keybind.context && <p>Context: {keybind.context}</p>}
+        {combinations.map((entry) => (
+          <p className="combo-tooltip" key={entry.id}>
+            {entry.shortcut}: {entry.action}{entry.context && ` (${entry.context})`}
           </p>
         ))}
       </div>

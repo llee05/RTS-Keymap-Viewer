@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { KeyboardPreset } from '../data/presets';
 import { findRecordedCombination, getKeyForCode } from '../data/hotkeyCapture';
-import { getKeyOptions } from '../data/keyboard';
+import { getBindingSignature, getCommandEntries, getKeyOptions } from '../data/keyboard';
 import { Dialog } from './Dialog';
+import { KeyPicker } from './KeyPicker';
 
 type Props = {
   preset: KeyboardPreset;
   trigger: HTMLButtonElement;
   onClose: () => void;
-  onAdd: (keyIds: string[], command: string) => void;
+  onAdd: (keyIds: string[], command: string, context: string, category: string) => void;
 };
 
 export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   const [command, setCommand] = useState('');
+  const [context, setContext] = useState('');
+  const [category, setCategory] = useState('');
   const [recording, setRecording] = useState(false);
   const [keyIds, setKeyIds] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -24,7 +27,8 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   const helpId = useId();
   const previewId = useId();
   const labels = new Map(getKeyOptions(preset).map((option) => [option.id, option.label]));
-  const existing = findRecordedCombination(preset, keyIds);
+  const existing = findRecordedCombination(preset, keyIds, context);
+  const otherContexts = getCommandEntries(preset).filter((entry) => entry.combination && getBindingSignature(entry.keyIds) === getBindingSignature(keyIds) && getBindingSignature(entry.keyIds, entry.context) !== getBindingSignature(keyIds, context));
 
   const stopOnBlur = useCallback(() => {
     held.current.clear();
@@ -87,11 +91,16 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
     <Dialog title="Add hotkey" className="hotkey-recorder" returnFocusTo={trigger} onClose={onClose} closeLabel="Close" initialFocus="input">
       <form onSubmit={(event) => {
         event.preventDefault();
-        if (!recording && keyIds.length && command.trim() && !error) onAdd(keyIds, command);
+        if (!recording && keyIds.length && command.trim() && !error) onAdd(keyIds, command, context, category);
       }}>
         <label className="editor-label" htmlFor={commandId}>Command</label>
         <input id={commandId} autoFocus value={command} placeholder="e.g. Select all military units" onChange={(event) => setCommand(event.target.value)} />
         <p className="editor-help">The hotkey will appear on the keyboard. Changes stay in the draft until you save the preset.</p>
+        <p className="editor-help">For a single key, category and context describe all of its commands.</p>
+        <div className="editor-fields">
+          <label>Category (optional)<input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Selection" /></label>
+          <label>Context (optional)<input value={context} onChange={(event) => setContext(event.target.value)} placeholder="e.g. In combat" /></label>
+        </div>
         <p className="editor-label" id={previewId}>Hotkey</p>
         <p className="hotkey-preview" aria-labelledby={previewId} role="status">
           {keyIds.length ? keyIds.map((id, index) => <span className="hotkey-preview-key" key={id}>{index > 0 && <i aria-hidden="true">+</i>}<kbd>{labels.get(id)}</kbd></span>) : recording ? 'Listening for keys…' : 'No hotkey recorded'}
@@ -108,6 +117,13 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
             {recording ? 'Stop recording' : 'Record hotkey'}
           </button>
         </div>
+        <details className="manual-keys">
+          <summary>Choose keys on screen</summary>
+          <KeyPicker options={getKeyOptions(preset)} selected={keyIds} onChange={(ids) => {
+            held.current.clear(); setRecording(false); setError(''); setKeyIds(ids);
+          }} />
+        </details>
+        {!!otherContexts.length && <p className="editor-help">Also used for: {otherContexts.map((entry) => `${entry.action} (${entry.context || 'General'})`).join('; ')}. Use a distinct context to retain separate assignments.</p>}
         {error && <p className="dialog-error" role="alert">{error}</p>}
         {!recording && existing && <p className="editor-help hotkey-conflict">Already assigned to “{existing.action}”. Replace hotkey updates this combination.</p>}
         <div className="dialog-actions mode-controls">

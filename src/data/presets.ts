@@ -10,18 +10,24 @@ export type Keybind = {
   width?: number;
   height?: number;
   spacer?: boolean;
+  category?: string;
+  context?: string;
 };
 
 export type KeyCombination = {
   keyId: string;
   additionalKeyIds?: string[];
   action: string;
+  category?: string;
+  context?: string;
 };
 
 export type KeyboardPreset = {
   id: string;
   name: string;
   game: string;
+  source?: string;
+  version?: string;
   rows: Keybind[][];
 };
 

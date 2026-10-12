@@ -5,13 +5,16 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 ## Current features
 
 - One bundled preset: **Age of Empires IV Default**, including function keys, arrow keys, and keys with different widths and heights.
-- Command tooltips on key hover or keyboard focus.
+- Command tooltips on key hover, touch, or keyboard focus, including combinations owned by other participating keys.
+- Arrow-key navigation across the keyboard, persistent assignment markers, and reduced-motion support.
 - An **Add hotkey** button that records pressed keys and combinations and places commands on the keyboard automatically.
 - Highlighting of every participating key in combinations, including shortcuts such as Ctrl+Shift+R.
-- Command and combination search, with matching keys highlighted and a **Next match** button to jump between them.
+- Command results with shortcut labels, category filtering, combination highlighting, and a **Next match** button. Search accepts notation such as `Ctrl+A` and `Control + A`.
 - Persistent markers for assigned commands and combinations.
-- Custom presets cloned from the active layout, with editable names, game labels, commands, and combinations.
-- JSON import/export and custom-preset deletion with confirmation.
+- Custom presets cloned from the active layout or created blank, with editable names, game labels, commands, combinations, categories, contexts, sources, and versions.
+- Undo/redo, an unsaved indicator, discard confirmation, browser exit warnings, and recoverable drafts.
+- Remembered active layouts and a bundled reference fallback with storage retry.
+- JSON import/export, full-library backups, and custom-preset deletion with confirmation.
 - Accessible key editor dialogs with keyboard focus containment, Escape dismissal, and focus restoration.
 - Browser-local persistence through IndexedDB.
 - A dark interface with responsive controls and a horizontally scrollable keyboard on smaller screens.
@@ -20,23 +23,30 @@ Editing a preset changes the reference board. Configure the actual game bindings
 
 ## Using the viewer
 
-1. Choose a layout from **Active layout**. Hover over a key, tap it, or focus it with Tab to see its commands and combinations. Press Escape to dismiss a tooltip. Scrolling the page or keyboard, or resizing the window, also dismisses it.
-2. Select **Add hotkey**, enter a **Command**, and select **Record hotkey**. Press a key or hold a combination together, then release all keys. The dialog previews the detected keys, including Left/Right modifiers. Select **Add hotkey** in the dialog to place the command on those keys and start a draft. Single-key commands are appended; an existing combination shows its current action and offers **Replace hotkey**. Cancelling the dialog leaves the layout unchanged.
-3. Add more hotkeys with the same button. Change the draft's **Name** and **Game** as needed. You can also select **New preset** to copy the active layout, or **Edit preset** to edit it directly.
-4. To change or remove existing entries, click a key, or focus it and press Enter or Space, to open its editor. Enter commands one per line. To add a two-key combination manually, choose another key, enter its action, and select **Add combination**. Existing combination actions can be edited or removed, including recorded combinations with multiple modifiers. Duplicate labels are distinguished in the picker, such as Left Ctrl and Right Ctrl. Select **Close editor**, or press Escape, to return focus to the key. Closing the editor keeps changes in the draft; **Cancel** discards the whole draft.
-5. Select **Save preset** to store a custom draft, or **Cancel** to discard it and return to the original layout. When editing a bundled layout, choose **Save as custom** to keep your changes across reloads, or **Save for this session** for temporary changes. Layout switching is disabled while editing, and editing and cancellation are disabled while a save is in progress.
+1. Choose **Active layout**. Hover, tap, or focus a key to see its commands and every combination that uses it. Press Escape to dismiss the tooltip. Scrolling the page or keyboard, or resizing the window, also dismisses it. Use arrow keys to move between nearby keys, skipping spacers; Home and End go to the first and last key in the row. Tab navigation remains available.
+2. Select **Add hotkey** and enter a **Command**. Either select **Record hotkey**, hold the keys together and release all keys, or expand **Choose keys on screen** and select every participating key. The on-screen picker works with touch and keyboard navigation. Add an optional category or context, then select **Add hotkey**. An existing combination in the same context offers **Replace hotkey**. Single-key commands are appended; their category and context describe all commands on that key.
+3. Select **Clone preset** to copy the current assignments, or open **More preset actions → Blank preset** to copy only the physical keyboard shape. **Edit preset** edits the active layout directly. Name and Game must contain text; saving trims both fields. **Source and version** holds optional provenance, such as a reference URL, game patch, or personal revision.
+4. In edit mode, click a key or press Enter/Space on it. Enter one command per line and optionally classify that key's commands. Create combinations using **Combination key** or **Choose multiple combination keys**. Existing combinations offer **Change keys, category or context**, allowing their participants to be edited without re-recording. **Close editor** or Escape retains changes in the draft.
+5. **Undo** and **Redo** step through draft changes (up to 100 previous states). The indicator distinguishes **Unsaved changes** from **No changes yet**. **Cancel** asks for confirmation when the draft differs from the saved preset. Escape or **Keep editing** dismisses that confirmation without discarding work.
+6. Select **Save preset** for custom drafts. For bundled layouts, **Save as custom** keeps a persistent copy, while **Save for this session** keeps temporary edits that reset on reload. Saving disables editing and cancellation until the transaction completes; failed saves retain the draft for retry.
 
-Recording only listens while the recording button is focused and active; typing the command does not record a hotkey. During recording, Tab, Escape, Enter, and Space are treated as bindings. Release all keys to finish recording and resume normal dialog navigation, or select **Stop recording**. Recording uses physical keyboard codes matched to the displayed layout (the bundled board uses US QWERTY positions). Keys that are absent or ambiguous in the layout are rejected; keys intercepted by the operating system or browser cannot be recorded. Touch-only devices can use the individual key editors; recording requires a physical keyboard.
+Recording only listens while its button is focused and active; typing the command does not record a hotkey. During recording, Tab, Escape, Enter, and Space are treated as bindings. Release all keys to resume dialog navigation, or select **Stop recording**. Recording uses physical keyboard codes matched to the displayed layout (the bundled board uses US QWERTY positions). Unsupported or ambiguous keys are rejected; keys intercepted by the operating system or browser cannot be recorded. **Choose keys on screen** is available when recording is unsuitable, including touch-only devices.
 
-Spaces and line breaks are preserved while typing in key editors. Saving trims each command, removes empty lines, and treats an empty command list as unassigned. Combination targets must exist, must be real keys, and cannot target the owning key or repeat within a combination. Each complete combination must be unique on its owning key. Invalid combinations in existing custom presets are shown with an explanation; the preset is preserved and can be edited to remove or correct them before saving.
+Spaces and line breaks are preserved while typing. Saving trims each command, removes empty lines, and treats an empty command list as unassigned. Combination targets must exist, must be real keys, and cannot target the owning key or repeat within a combination. The complete set of participating keys must be unique across the preset within each context. Use distinct contexts to retain separate assignments, for example General and Spectator. Context comparison ignores case and extra whitespace. Invalid combinations in existing custom presets are preserved, explained, and editable; saving is disabled until they are repaired. Imports use the same conflict checks and remain atomic.
+
+Draft recovery is separate from saved presets. Changes are copied to browser-local storage as you edit. Reloading offers **Restore draft** or **Discard recovery**, preserving unfinished fields and raw command text. Browsers normally warn before navigating away with changes after user interaction; mobile browsers may omit that prompt, so recovery remains useful. Saving or confirming discard removes the recovery copy. If recovery storage is unavailable or full, the app explains that edits need to be saved before closing. Undo history is limited to the current session and is not recovered after reload.
 
 ### Finding commands
 
-Use **Search commands or keys** to search the current layout's key labels, commands, and combination actions. Search ignores case and extra spaces. A matching combination highlights every participating key. **Next match** cycles through the matching keys and scrolls them into view; **Clear search** removes the highlights. Blue markers indicate assigned commands and purple markers indicate combinations, including when search is empty.
+**Search commands or keys** matches command text, key labels, shortcut notation, categories, and contexts. Search ignores case and extra spaces. **Command category** filters the results. Each result shows a command and its shortcut, with category/context details; the count refers to commands rather than the number of participating keys. Select a result or **Next match** to focus its owning key and scroll it into view. A matching combination highlights every participant. **Clear search** clears both the query and category.
+
+Blue markers indicate assigned commands; purple markers indicate combination participants, including incoming combinations. The legend stays visible on mobile, where the keyboard retains full-size keys and scrolls sideways. Backup and management controls are collapsed under **More preset actions** to keep the board easier to reach.
 
 ### Backups and preset management
 
-In view mode, **Export preset** downloads the active layout as JSON, including its name, game, commands, combinations, key sizes, and spacers. Use **Import presets** in another browser to restore it. Each import creates a new custom copy with a fresh ID and keeps the original name and game; existing presets and bundled layouts are never overwritten. Imports are validated before saving, and a batch is saved in a single transaction so a failed import does not leave partial copies.
+In view mode, open **More preset actions**. **Export preset** downloads the active layout as JSON, including its name, game, commands, combinations, categories, contexts, source/version metadata, key sizes, and spacers. Use **Import presets** in another browser to restore it. Each import creates a new custom copy with a fresh ID and keeps the original name and game; existing presets and bundled layouts are never overwritten. Imports are validated before saving, and a batch is saved in a single transaction so a failed import does not leave partial copies.
+
+**Export all presets** backs up the full library, including the bundled layout. Large libraries are split into files of at most 100 presets and 2 MB each; the dialog offers an explicit download for every part. Import every part to restore the full library. A single preset over 2 MB must be shortened before export.
 
 The importer accepts an exported version 1 backup (`format: "rts-keymap-viewer"`, `version: 1`, `presets: [...]`), a single `KeyboardPreset`, or an array of presets. Files must be no larger than 2 MB and contain 1–100 presets. Each preset must have 1–30 nonempty rows, at most 500 key entries, and valid combination references; optional width and height must be positive multipliers no greater than 30.
 
@@ -46,9 +56,11 @@ The importer accepts an exported version 1 backup (`format: "rts-keymap-viewer"`
 
 Presets are stored in the browser's IndexedDB database `rts-keymap-viewer`, in the `presets` object store. Saved custom presets survive reloads in the same browser profile and origin; different hosts or ports have separate storage. Clearing the site's browser storage removes custom presets.
 
-**Bundled presets are refreshed from source every time the app loads.** Edits saved directly to a bundled preset apply for the current session and reset on reload. The app explains this beside the preset controls. Use **New preset** or **Save as custom** to keep a customized version across reloads. **Save as custom** saves the edited draft with a new custom ID and adds “(Custom)” to its name.
+**Bundled presets are refreshed from source every time the app loads.** Edits saved directly to a bundled preset apply for the current session and reset on reload. The app explains this beside the preset controls. Use **Clone preset** or **Save as custom** to keep a customized version across reloads. **Save as custom** saves the edited draft with a new custom ID and adds “(Custom)” to its name.
 
-The status message below the controls reports database loading, editing, saving, and errors. IndexedDB must be available for layouts to load and save.
+The active layout is remembered for the same browser profile and origin. If that layout no longer exists, the bundled default is selected. The selection and recovery draft use localStorage (`rts-keymap-active` and `rts-keymap-draft`); saved presets still use IndexedDB. Clearing site storage removes all three.
+
+The status message reports loading, editing, saving, and errors. If IndexedDB fails, the bundled board remains available to view, search, and export. Editing, importing, and deletion are disabled until **Retry storage** reconnects successfully. Existing custom layouts are not cleared during recovery.
 
 ## Local development
 
@@ -111,11 +123,14 @@ Storage unit tests drive database request and transaction events through a contr
 | `src/data/presets.ts` | Preset types, IndexedDB storage, seeding, and migration helpers. |
 | `src/data/presetValidation.ts` | Combination validation before saving and explanations for invalid saved combinations. |
 | `src/data/presetEditing.ts` | Deep cloning, draft updates, custom IDs, and command normalization. |
-| `src/data/keyboard.ts` | Key IDs, disambiguated labels, related keys, and search matching. |
+| `src/data/keyboard.ts` | Key labels, command results, categories, related keys, and canonical shortcut signatures. |
+| `src/data/browserState.ts` | Optional localStorage selection and validated draft recovery. |
+| `src/hooks/useDraft.ts` | Bounded undo/redo history without mutating saved presets. |
+| `src/components/KeyPicker.tsx` | Searchable on-screen selection of shortcut participants. |
 | `src/data/hotkeyCapture.ts` | Physical key matching, combination conflict detection, and recorded draft assignments. |
 | `src/data/presetTransfer.ts` | Backup serialization and validation of imported JSON. |
 | `tests/*.test.ts` | Node regression checks for data and draft behavior. |
-| `tests/browser/app.spec.ts` | Browser checks for interactions, backups, persistence, error handling, and accessibility. |
+| `tests/browser/*.spec.ts` | Desktop/mobile interaction, recovery, backup, persistence, error, and accessibility regressions. |
 | `playwright.config.ts` | Desktop/mobile Chromium projects and the test preview server. |
 | `public/` | Static assets copied into the build. |
 | `vite.config.ts` | React plugin and deployment base path. |

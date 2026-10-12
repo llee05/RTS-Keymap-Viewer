@@ -1,5 +1,5 @@
 import type { KeyboardPreset } from './presets.ts';
-import { getCombinationTargets, getKeyId, getKeyOptions, type KeyOption } from './keyboard.ts';
+import { getBindingSignature, getCombinationTargets, getKeyId, getKeyOptions, type KeyOption } from './keyboard.ts';
 import { updatePresetKey, type KeyPosition } from './presetEditing.ts';
 
 const codeLabels: Record<string, string[]> = {
@@ -30,40 +30,39 @@ export function getKeyForCode(preset: KeyboardPreset, code: string): KeyOption |
 }
 
 type Assignment = { position: KeyPosition; index: number; action: string };
-const signature = (ids: string[]) => [...ids].sort().join(',');
 
-export function findRecordedCombination(preset: KeyboardPreset, keyIds: string[]): Assignment | undefined {
+export function findRecordedCombination(preset: KeyboardPreset, keyIds: string[], context = ''): Assignment | undefined {
   if (keyIds.length < 2) return undefined;
-  const wanted = signature(keyIds);
+  const wanted = getBindingSignature(keyIds, context);
   for (const [rowIndex, row] of preset.rows.entries()) {
     for (const [keyIndex, key] of row.entries()) {
       if (key.spacer) continue;
       const index = key.combinations?.findIndex((combination) =>
-        signature([getKeyId(rowIndex, keyIndex), ...getCombinationTargets(combination)]) === wanted,
+        getBindingSignature([getKeyId(rowIndex, keyIndex), ...getCombinationTargets(combination)], combination.context) === wanted,
       ) ?? -1;
       if (index >= 0) return { position: { rowIndex, keyIndex }, index, action: key.combinations![index].action };
     }
   }
 }
 
-export function assignRecordedHotkey(preset: KeyboardPreset, keyIds: string[], command: string): KeyboardPreset {
+export function assignRecordedHotkey(preset: KeyboardPreset, keyIds: string[], command: string, context = '', category = ''): KeyboardPreset {
   const action = command.trim();
   const validIds = new Set(getKeyOptions(preset).map((option) => option.id));
   if (!action || !keyIds.length || new Set(keyIds).size !== keyIds.length || keyIds.some((id) => !validIds.has(id))) {
     throw new Error('Enter a command and record keys from this layout.');
   }
-  const existing = findRecordedCombination(preset, keyIds);
+  const existing = findRecordedCombination(preset, keyIds, context);
   if (existing) {
     return updatePresetKey(preset, existing.position, (key) => ({
       ...key,
-      combinations: key.combinations?.map((combination, index) => index === existing.index ? { ...combination, action } : combination),
+      combinations: key.combinations?.map((combination, index) => index === existing.index ? { ...combination, action, ...(context.trim() ? { context: context.trim() } : {}), ...(category.trim() ? { category: category.trim() } : {}) } : combination),
     }));
   }
   const [rowIndex, keyIndex] = keyIds.at(-1)!.split('-').map(Number);
   return updatePresetKey(preset, { rowIndex, keyIndex }, (key) => {
     if (keyIds.length === 1) {
       const commands = key.hotkeys.map((value) => value.trim()).filter(Boolean);
-      return { ...key, hotkeys: commands.includes(action) ? commands : [...commands, action] };
+      return { ...key, hotkeys: commands.includes(action) ? commands : [...commands, action], ...(category.trim() ? { category: category.trim() } : {}), ...(context.trim() ? { context: context.trim() } : {}) };
     }
     const targets = keyIds.slice(0, -1);
     return {
@@ -72,6 +71,8 @@ export function assignRecordedHotkey(preset: KeyboardPreset, keyIds: string[], c
         keyId: targets[0],
         ...(targets.length > 1 ? { additionalKeyIds: targets.slice(1) } : {}),
         action,
+        ...(context.trim() ? { context: context.trim() } : {}),
+        ...(category.trim() ? { category: category.trim() } : {}),
       }],
     };
   });

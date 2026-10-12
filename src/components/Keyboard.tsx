@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardPreset } from '../data/presets';
 import type { KeyPosition } from '../data/presetEditing';
-import { findMatchingKeys, getKeyId, getKeyOptions, getRelatedKeyIds } from '../data/keyboard';
+import { findCommandResults, getCommandEntries, getKeyId, getKeyOptions, getRelatedKeyIds, type CommandEntry } from '../data/keyboard';
 import { CommandSearch } from './CommandSearch';
 import { KeyTooltip } from './KeyTooltip';
 
@@ -17,6 +17,7 @@ type Props = {
 type ActiveKey = { id: string; element: HTMLButtonElement };
 
 export function Keyboard({ preset, editing, busy, selected, query, onQueryChange, onEditKey }: Props) {
+  const [category, setCategory] = useState('');
   const [active, setActive] = useState<ActiveKey | null>(null);
   const board = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<number | null>(null);
@@ -24,7 +25,10 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
   const tooltipId = useId();
   const options = getKeyOptions(preset);
   const labels = new Map(options.map((option) => [option.id, option.label]));
-  const matches = findMatchingKeys(preset, query);
+  const entries = getCommandEntries(preset);
+  const categories = [...new Set(entries.map((entry) => entry.category))].sort();
+  const results = findCommandResults(preset, query, category);
+  const matches = new Set(results.flatMap((entry) => entry.keyIds));
   const selectedId = selected ? getKeyId(selected.rowIndex, selected.keyIndex) : null;
   const related = getRelatedKeyIds(preset, selectedId ?? active?.id ?? null);
   const activeKey = active ? preset.rows.flatMap((row, rowIndex) => row.map((keybind, keyIndex) => ({ keybind, id: getKeyId(rowIndex, keyIndex) }))).find((key) => key.id === active.id)?.keybind : undefined;
@@ -61,27 +65,32 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
   }, [active, editing]);
 
   function focusNextMatch() {
-    const matchingOptions = options.filter((option) => matches.has(option.id));
-    if (!matchingOptions.length) return;
-    if (nextMatch.current.query !== query) nextMatch.current = { query, index: 0 };
-    const match = matchingOptions[nextMatch.current.index % matchingOptions.length];
+    if (!results.length) return;
+    const search = `${query}:${category}`;
+    if (nextMatch.current.query !== search) nextMatch.current = { query: search, index: 0 };
+    const match = results[nextMatch.current.index % results.length];
     nextMatch.current.index++;
-    const element = board.current?.querySelector<HTMLButtonElement>(`[data-key-position="${match.id}"]`);
+    focusResult(match);
+  }
+
+  function focusResult(entry: CommandEntry) {
+    const element = board.current?.querySelector<HTMLButtonElement>(`[data-key-position="${entry.ownerId}"]`);
     element?.scrollIntoView({ block: 'nearest', inline: 'center' });
     requestAnimationFrame(() => element?.focus({ preventScroll: true }));
   }
 
   return (
     <>
-      <CommandSearch query={query} matchCount={matches.size} onChange={onQueryChange} onNext={focusNextMatch} />
+      <CommandSearch query={query} results={results} category={category} categories={categories} onChange={onQueryChange} onCategory={setCategory} onNext={focusNextMatch} onResult={focusResult} />
       <div className="keyboard-heading">
         <div><p className="eyebrow">Reference board</p><h2>{preset.name}</h2></div>
         <div className="keyboard-legend" aria-label="Keyboard legend">
           <span><i className="legend-dot assigned" aria-hidden="true" /> Assigned</span>
           <span><i className="legend-dot combination" aria-hidden="true" /> Combination</span>
-          {query.trim() && <span><i className="legend-dot search" aria-hidden="true" /> Search match</span>}
+          {(query.trim() || category) && <span><i className="legend-dot search" aria-hidden="true" /> Search match</span>}
         </div>
       </div>
+      <p className="board-hint">Tap or focus a key. Arrow keys move focus.<span className="swipe-hint"> Swipe sideways for more keys.</span></p>
       <div className="keyboard-frame" ref={board}>
         <div className="keyboard">
           {preset.rows.map((row, rowIndex) => (
@@ -91,7 +100,7 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
                 const width = `${(keybind.width ?? 1) * 64}px`;
                 if (keybind.spacer) return <div key={id} style={{ width }} aria-hidden="true" />;
                 const isAssigned = keybind.hotkeys.some((command) => command.trim());
-                const hasCombination = !!keybind.combinations?.length;
+                const hasCombination = entries.some((entry) => entry.combination && entry.keyIds.includes(id));
                 const label = labels.get(id) ?? keybind.label;
                 return (
                   <button
@@ -105,6 +114,30 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
                     aria-haspopup={editing ? 'dialog' : undefined}
                     aria-expanded={editing ? id === selectedId : undefined}
                     disabled={editing && busy}
+                    onKeyDown={(event) => {
+                      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+                      event.preventDefault();
+                      const current = event.currentTarget;
+                      const row = current.closest('.keyboard-row');
+                      const rows = [...(board.current?.querySelectorAll('.keyboard-row') ?? [])];
+                      const buttons = [...(row?.querySelectorAll<HTMLButtonElement>('.key') ?? [])];
+                      let target: HTMLButtonElement | undefined;
+                      const index = buttons.indexOf(current);
+                      if (event.key === 'Home') target = buttons[0];
+                      else if (event.key === 'End') target = buttons.at(-1);
+                      else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') target = buttons[index + (event.key === 'ArrowLeft' ? -1 : 1)];
+                      else {
+                        const direction = event.key === 'ArrowUp' ? -1 : 1;
+                        const center = current.getBoundingClientRect().left + current.offsetWidth / 2;
+                        for (let i = rows.indexOf(row!) + direction; i >= 0 && i < rows.length; i += direction) {
+                          const candidates = [...rows[i].querySelectorAll<HTMLButtonElement>('.key')];
+                          if (!candidates.length) continue;
+                          target = candidates.sort((a, b) => Math.abs(a.getBoundingClientRect().left + a.offsetWidth / 2 - center) - Math.abs(b.getBoundingClientRect().left + b.offsetWidth / 2 - center))[0];
+                          break;
+                        }
+                      }
+                      target?.focus();
+                    }}
                     onMouseEnter={(event) => { cancelHide(); setActive({ id, element: event.currentTarget }); }}
                     onMouseLeave={(event) => {
                       if (document.activeElement !== event.currentTarget) {
@@ -138,7 +171,7 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
           ))}
         </div>
       </div>
-      {!editing && active && activeKey && <KeyTooltip key={active.id} id={tooltipId} anchor={active.element} keybind={activeKey} label={labels.get(active.id) ?? activeKey.label} labels={labels} onMouseEnter={cancelHide} onMouseLeave={() => { if (document.activeElement !== active.element) setActive(null); }} />}
+      {!editing && active && activeKey && <KeyTooltip key={active.id} id={tooltipId} anchor={active.element} keybind={activeKey} label={labels.get(active.id) ?? activeKey.label} combinations={entries.filter((entry) => entry.combination && entry.keyIds.includes(active.id))} onMouseEnter={cancelHide} onMouseLeave={() => { if (document.activeElement !== active.element) setActive(null); }} />}
     </>
   );
 }

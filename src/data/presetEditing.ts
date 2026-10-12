@@ -27,6 +27,8 @@ export function parseHotkeyText(value: string): string[] {
 
 export function normalizePreset(preset: KeyboardPreset): KeyboardPreset {
   const normalized = clonePreset(preset);
+  normalized.name = normalized.name.trim();
+  normalized.game = normalized.game.trim();
   normalized.rows.forEach((row) => row.forEach((key) => {
     if (!key.spacer) key.hotkeys = parseHotkeyText(key.hotkeys.join('\n'));
   }));
@@ -44,4 +46,14 @@ export function updatePresetKey(
       ? row.map((key, keyIndex) => keyIndex === position.keyIndex ? update(key) : key)
       : row),
   };
+}
+
+export function createBlankPreset(preset: KeyboardPreset): KeyboardPreset {
+  const blank = createCustomPreset(preset, 'Blank Preset');
+  blank.source = '';
+  blank.version = '';
+  blank.rows = blank.rows.map((row) => row.map((key) => ({
+    ...key, hotkeys: key.spacer ? [] : [''], combinations: undefined, category: undefined, context: undefined,
+  })));
+  return blank;
 }

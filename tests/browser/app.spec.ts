@@ -1,52 +1,10 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { defaultPresets } from '../../src/data/defaultPresets';
-import type { KeyboardPreset } from '../../src/data/presets';
 
-const key = (page: Page, id: string) => page.locator(`.key[data-key-position="${id}"]`);
-const status = (page: Page) => page.locator('.database-status');
-const pageErrors = new WeakMap<Page, string[]>();
+import { key, status, storedPresets, makeCustom, manage, cancelDraft, openKey, installBrowserChecks } from './helpers';
 
-async function storedPresets(page: Page): Promise<KeyboardPreset[]> {
-  return page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('rts-keymap-viewer', 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const database = request.result;
-      const read = database.transaction('presets').objectStore('presets').getAll();
-      read.onsuccess = () => { database.close(); resolve(read.result); };
-      read.onerror = () => { database.close(); reject(read.error); };
-    };
-  }));
-}
-
-async function makeCustom(page: Page, name = 'Browser preset') {
-  await page.getByRole('button', { name: 'New preset' }).click();
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByRole('button', { name: 'Save preset', exact: true }).click();
-  await expect(status(page)).toHaveText('Saved preset to local database');
-  return page.getByLabel('Active layout').inputValue();
-}
-
-async function openKey(page: Page, id = '2-1') {
-  await key(page, id).scrollIntoViewIfNeeded();
-  await key(page, id).focus();
-  await page.keyboard.press('Enter');
-  return page.getByRole('dialog');
-}
-
-test.beforeEach(async ({ page }) => {
-  const errors: string[] = [];
-  pageErrors.set(page, errors);
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('./');
-  await expect(status(page)).toHaveText('Loaded from local database');
-});
-
-test.afterEach(async ({ page }) => {
-  expect(pageErrors.get(page)).toEqual([]);
-});
+installBrowserChecks();
 
 test('tooltips describe focused keys, highlight both directions, and dismiss without moving focus', async ({ page }) => {
   await key(page, '3-1').scrollIntoViewIfNeeded();
@@ -76,15 +34,15 @@ test('search highlights command and combination matches, cycles focus, and keeps
   await expect(key(page, '3-1').locator('.key-combination-marker')).toHaveCount(1);
   await expect(key(page, '2-8').locator('.key-assigned-marker')).toHaveCount(0);
   await page.getByLabel('Search commands or keys').fill('idle villagers');
-  await expect(page.locator('.search-status')).toHaveText('2 matching keys');
+  await expect(page.locator('.search-status')).toHaveText('1 matching command');
   await expect(key(page, '4-9')).toHaveClass(/key-search-match/);
   await expect(key(page, '5-0')).toHaveClass(/key-search-match/);
   await page.getByRole('button', { name: 'Next match' }).click();
   await expect(key(page, '4-9')).toBeFocused();
   await page.getByRole('button', { name: 'Next match' }).click();
-  await expect(key(page, '5-0')).toBeFocused();
+  await expect(key(page, '4-9')).toBeFocused();
   await page.getByLabel('Search commands or keys').fill('no-such-command');
-  await expect(page.locator('.search-status')).toHaveText('No matching keys');
+  await expect(page.locator('.search-status')).toHaveText('No matching commands');
   await expect(page.getByRole('button', { name: 'Next match' })).toBeDisabled();
   await page.getByRole('button', { name: 'Clear search' }).click();
   await expect(page.locator('.key-search-match')).toHaveCount(0);
@@ -124,16 +82,16 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await page.reload();
   await expect(status(page)).toHaveText('Loaded from local database');
   await page.getByLabel('Active layout').selectOption(id);
-  await page.getByRole('button', { name: 'New preset' }).click();
+  await page.getByRole('button', { name: 'Clone preset' }).click();
   await page.getByLabel('Name', { exact: true }).fill('Discarded copy');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await cancelDraft(page);
   await expect(page.getByLabel('Active layout')).toHaveValue(id);
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   await openKey(page);
   await page.getByRole('textbox', { name: 'Q hotkeys' }).fill('Discard this command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await expect(key(page, '2-1')).toBeFocused();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await cancelDraft(page);
   saved = (await storedPresets(page)).find((preset) => preset.id === id)!;
   expect(saved.rows[2][1].hotkeys).toEqual(['First command', 'Second command']);
 });
@@ -185,6 +143,8 @@ test('recording supports sided multi-key combinations, search, highlighting, and
   await page.keyboard.up('ShiftLeft');
   await page.keyboard.up('ControlRight');
   await page.keyboard.press('Tab');
+  await expect(dialog.locator('.manual-keys summary')).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
@@ -194,7 +154,7 @@ test('recording supports sided multi-key combinations, search, highlighting, and
   await expect(status(page)).toHaveText('Loaded from local database');
   await page.getByLabel('Active layout').selectOption(id);
   await page.getByLabel('Search commands or keys').fill('queue reinforcements');
-  await expect(page.locator('.search-status')).toHaveText('3 matching keys');
+  await expect(page.locator('.search-status')).toHaveText('1 matching command');
   await key(page, '2-4').scrollIntoViewIfNeeded();
   await key(page, '2-4').focus();
   await expect(page.getByRole('tooltip')).toContainText('R + Right Ctrl + Left Shift: Queue reinforcements');
@@ -208,7 +168,7 @@ test('recording supports sided multi-key combinations, search, highlighting, and
   await expect(editor.getByRole('textbox', { name: 'R + Right Ctrl + Left Shift action', exact: true })).toHaveValue('Queue reinforcements');
   await editor.getByRole('button', { name: 'Remove R + Right Ctrl + Left Shift combination', exact: true }).click();
   await editor.getByRole('button', { name: 'Close editor' }).click();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await cancelDraft(page);
   expect((await storedPresets(page)).find((preset) => preset.id === id)!.rows[2][4].combinations).toEqual([
     { keyId: '5-7', additionalKeyIds: ['4-0'], action: 'Queue reinforcements' },
   ]);
@@ -227,6 +187,8 @@ test('recording navigation keys does not close the dialog or move focus and unre
     await expect(record).toBeFocused();
     await expect(dialog.getByRole('status')).toHaveText(label);
   }
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator('.manual-keys summary')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -258,7 +220,7 @@ test('unsupported keys clear the recording, conflicts require replacement, and d
   await page.keyboard.press('ControlLeft+KeyA');
   await expect(dialog).toContainText('Already assigned to “Select all units on screen”');
   await dialog.getByRole('button', { name: 'Replace hotkey', exact: true }).click();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await cancelDraft(page);
   expect((await storedPresets(page)).find((preset) => preset.id === id)).toEqual(before);
   await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
   await dialog.getByLabel('Command', { exact: true }).fill('Updated selection');
@@ -269,13 +231,14 @@ test('unsupported keys clear the recording, conflicts require replacement, and d
   await expect(status(page)).toHaveText('Saved preset to local database');
   const saved = (await storedPresets(page)).find((preset) => preset.id === id)!;
   expect(saved.rows[3][1].hotkeys).toEqual(['Attack Move']);
-  expect(saved.rows[3][1].combinations).toEqual([{ keyId: '5-0', action: 'Updated selection' }]);
+  expect(saved.rows[3][1].combinations).toEqual([{ ...before.rows[3][1].combinations![0], action: 'Updated selection' }]);
 });
 
 test('export and import round trip the layout with a fresh custom ID', async ({ page }) => {
   const id = await makeCustom(page, 'Backup preset');
   const original = (await storedPresets(page)).find((preset) => preset.id === id)!;
   const downloadPromise = page.waitForEvent('download');
+  await manage(page);
   await page.getByRole('button', { name: 'Export preset' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('rts-keymap-backup-preset.json');
@@ -306,12 +269,13 @@ test('malformed imports and invalid combinations leave all existing presets unto
   expect(await storedPresets(page)).toEqual(before);
   await upload.setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(defaultPresets[0])) });
   await expect(status(page)).toContainText('Imported 1 preset');
-  await expect(page.getByRole('button', { name: 'New preset' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Clone preset' })).toBeEnabled();
 });
 
 test('deletion requires confirmation, restores focus on cancel, and persists after reload', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Delete preset', exact: true })).toHaveCount(0);
   const id = await makeCustom(page, 'Delete check');
+  await manage(page);
   await page.getByRole('button', { name: 'Delete preset', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete preset?' });
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
@@ -319,6 +283,7 @@ test('deletion requires confirmation, restores focus on cancel, and persists aft
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete preset', exact: true })).toBeFocused();
   expect((await storedPresets(page)).some((preset) => preset.id === id)).toBe(true);
+  await manage(page);
   await page.getByRole('button', { name: 'Delete preset', exact: true }).click();
   await dialog.getByRole('button', { name: 'Delete preset', exact: true }).click();
   await expect(status(page)).toHaveText('Deleted Delete check');
@@ -357,6 +322,7 @@ test('failed saves and deletes preserve data and allow retry', async ({ page }) 
       return request;
     };
   });
+  await manage(page);
   await page.getByRole('button', { name: 'Delete preset', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Delete preset', exact: true }).click();

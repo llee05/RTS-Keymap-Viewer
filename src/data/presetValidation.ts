@@ -1,5 +1,5 @@
 import type { Keybind, KeyboardPreset } from './presets.ts';
-import { getCombinationTargets } from './keyboard.ts';
+import { getBindingSignature, getCombinationTargets } from './keyboard.ts';
 
 export function getPresetValidationErrors(preset: KeyboardPreset): string[] {
   const keys = new Map<string, Keybind>(
@@ -8,9 +8,11 @@ export function getPresetValidationErrors(preset: KeyboardPreset): string[] {
     ),
   );
   const errors: string[] = [];
+  if (!preset.name.trim()) errors.push('Name must not be blank.');
+  if (!preset.game.trim()) errors.push('Game must not be blank.');
+  const bindings = new Map<string, string>();
 
   for (const [keyId, key] of keys) {
-    const targets = new Set<string>();
     const keyName = `${key.label || 'Blank key'} (${keyId})`;
 
     for (const combination of key.combinations ?? []) {
@@ -29,12 +31,10 @@ export function getPresetValidationErrors(preset: KeyboardPreset): string[] {
         seen.add(targetId);
       }
 
-      const signature = [...targetIds].sort().join(',');
-      if (targets.has(signature)) {
-        errors.push(`${keyName}: combination target ${targetIds.join(' + ')} is repeated.`);
-      }
-
-      targets.add(signature);
+      const signature = getBindingSignature([keyId, ...targetIds], combination.context);
+      const previous = bindings.get(signature);
+      if (previous) errors.push(`${keyName}: combination is repeated on ${previous}. Remove it or use a distinct context.`);
+      bindings.set(signature, keyName);
     }
   }
 

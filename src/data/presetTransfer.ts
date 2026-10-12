@@ -21,6 +21,9 @@ function readKey(value: unknown, field: string): Keybind {
     label: string(data.label, `${field}.label`),
     hotkeys: data.hotkeys.map((command) => string(command, `${field}.hotkeys`)),
   };
+  for (const fieldName of ['category', 'context'] as const) {
+    if (data[fieldName] !== undefined) key[fieldName] = string(data[fieldName], `${field}.${fieldName}`);
+  }
   if (data.spacer !== undefined) {
     if (typeof data.spacer !== 'boolean') throw new Error(`${field}.spacer must be true or false.`);
     key.spacer = data.spacer;
@@ -42,6 +45,9 @@ function readKey(value: unknown, field: string): Keybind {
         keyId: string(combination.keyId, `${field}.combinations.keyId`),
         action: string(combination.action, `${field}.combinations.action`),
       };
+      for (const fieldName of ['category', 'context'] as const) {
+        if (combination[fieldName] !== undefined) parsed[fieldName] = string(combination[fieldName], `${field}.combinations.${fieldName}`);
+      }
       if (combination.additionalKeyIds !== undefined) {
         if (!Array.isArray(combination.additionalKeyIds)) throw new Error(`${field}.combinations.additionalKeyIds must be a key list.`);
         parsed.additionalKeyIds = combination.additionalKeyIds.map((id) => string(id, `${field}.combinations.additionalKeyIds`));
@@ -53,7 +59,7 @@ function readKey(value: unknown, field: string): Keybind {
   return key;
 }
 
-function readPreset(value: unknown, index: number): KeyboardPreset {
+export function readPreset(value: unknown, index = 0, validate = true): KeyboardPreset {
   const field = `Preset ${index + 1}`;
   const data = record(value, field);
   if (!Array.isArray(data.rows) || !data.rows.length || data.rows.length > 30) {
@@ -70,8 +76,11 @@ function readPreset(value: unknown, index: number): KeyboardPreset {
     game: string(data.game, `${field}.game`),
     rows,
   };
-  validatePreset(preset);
-  return normalizePreset(preset);
+  for (const fieldName of ['source', 'version'] as const) {
+    if (data[fieldName] !== undefined) preset[fieldName] = string(data[fieldName], `${field}.${fieldName}`);
+  }
+  if (validate) validatePreset(preset);
+  return validate ? normalizePreset(preset) : preset;
 }
 
 export function parsePresetImport(text: string): KeyboardPreset[] {
@@ -87,9 +96,27 @@ export function parsePresetImport(text: string): KeyboardPreset[] {
     values = backup.presets;
   } else values = [parsed];
   if (!values.length || values.length > 100) throw new Error('Import between 1 and 100 presets at a time.');
-  return values.map(readPreset).map((preset) => createCustomPreset(preset, preset.name));
+  return values.map((value, index) => readPreset(value, index)).map((preset) => createCustomPreset(preset, preset.name));
 }
 
 export function serializePresets(presets: KeyboardPreset[]): string {
   return JSON.stringify({ format: 'rts-keymap-viewer', version: 1, presets }, null, 2);
+}
+
+// Each downloaded part can be restored through the existing bounded, atomic importer.
+export function createPresetBackups(presets: KeyboardPreset[]): string[] {
+  const backups: string[] = [];
+  let part: KeyboardPreset[] = [];
+  for (const preset of presets) {
+    if (new TextEncoder().encode(serializePresets([preset])).length > MAX_IMPORT_BYTES) {
+      throw new Error(`“${preset.name}” exceeds the 2 MB backup limit. Shorten its command text before exporting.`);
+    }
+    if (part.length === 100 || new TextEncoder().encode(serializePresets([...part, preset])).length > MAX_IMPORT_BYTES) {
+      backups.push(serializePresets(part));
+      part = [];
+    }
+    part.push(preset);
+  }
+  if (part.length) backups.push(serializePresets(part));
+  return backups;
 }
