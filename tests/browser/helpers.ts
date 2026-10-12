@@ -18,6 +18,12 @@ export async function storedPresets(page: Page): Promise<KeyboardPreset[]> {
   }));
 }
 
+export async function enterEditor(page: Page) {
+  const link = page.getByRole('link', { name: /^Edit/ });
+  if (await link.getAttribute('aria-current') !== 'page') await link.click();
+  await expect(link).toHaveAttribute('aria-current', 'page');
+}
+
 export async function manage(page: Page) {
   const details = page.locator('.preset-management');
   if (!await details.evaluate((element) => (element as HTMLDetailsElement).open)) await details.locator('summary').click();
@@ -44,7 +50,7 @@ export async function openKey(page: Page, id = '2-1') {
   return page.getByRole('dialog');
 }
 
-export function installBrowserChecks() {
+export function installBrowserChecks(editor = true) {
   test.beforeEach(async ({ page }) => {
     const errors: string[] = [];
     pageErrors.set(page, errors);
@@ -52,6 +58,7 @@ export function installBrowserChecks() {
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     await page.goto('./');
     await expect(status(page)).toHaveText('Loaded from local database');
+    if (editor) await enterEditor(page);
   });
 
   test.afterEach(async ({ page }) => {

@@ -7,6 +7,7 @@ import { KeyTooltip } from './KeyTooltip';
 
 type Props = {
   preset: KeyboardPreset;
+  editor: boolean;
   editing: boolean;
   busy: boolean;
   selected: KeyPosition | null;
@@ -16,7 +17,7 @@ type Props = {
 };
 type ActiveKey = { id: string; element: HTMLButtonElement };
 
-export function Keyboard({ preset, editing, busy, selected, query, onQueryChange, onEditKey }: Props) {
+export function Keyboard({ preset, editor, editing, busy, selected, query, onQueryChange, onEditKey }: Props) {
   const [category, setCategory] = useState('');
   const [active, setActive] = useState<ActiveKey | null>(null);
   const board = useRef<HTMLDivElement>(null);
@@ -81,7 +82,7 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
 
   return (
     <>
-      <CommandSearch query={query} results={results} category={category} categories={categories} onChange={onQueryChange} onCategory={setCategory} onNext={focusNextMatch} onResult={focusResult} />
+      <CommandSearch editor={editor} query={query} results={results} category={category} categories={categories} onChange={onQueryChange} onCategory={setCategory} onNext={focusNextMatch} onResult={focusResult} />
       <div className="keyboard-heading">
         <div><p className="eyebrow">Reference board</p><h2>{preset.name}</h2></div>
         <div className="keyboard-legend" aria-label="Keyboard legend">
@@ -106,6 +107,7 @@ export function Keyboard({ preset, editing, busy, selected, query, onQueryChange
                   <button
                     type="button"
                     key={id}
+                    id={`key-${id}`}
                     className={`key ${editing ? 'key-editable' : ''} ${id === selectedId ? 'key-selected' : ''} ${related.has(id) ? 'key-combo-highlight' : ''} ${matches.has(id) ? 'key-search-match' : ''}`}
                     style={{ width, height: `${(keybind.height ?? 1) * 64}px` }}
                     data-key-position={id}

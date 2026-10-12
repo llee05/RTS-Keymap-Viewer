@@ -177,6 +177,7 @@ test('the bundled board survives storage failure and Retry restores editing', as
 });
 
 test('the mobile board is discoverable on first load and retains its legend and swipe hint', async ({ page }) => {
+  await page.getByRole('link', { name: 'View', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.locator('.keyboard-frame').evaluate((element) => element.getBoundingClientRect().top)).toBeLessThan(600);
   await expect(page.getByLabel('Keyboard legend')).toBeVisible();

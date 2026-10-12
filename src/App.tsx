@@ -22,6 +22,7 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 const isBundled = (id: string) => defaultPresets.some((preset) => preset.id === id);
 
 function App() {
+  const [editor, setEditor] = useState(() => window.location.hash === '#edit');
   const [presets, setPresets] = useState<KeyboardPreset[]>(defaultPresets);
   const [activePresetId, setActivePresetId] = useState(() => readActivePreset() ?? 'aoe4-default');
   const { draft, setDraft, undo, redo, canUndo, canRedo } = useDraft();
@@ -41,12 +42,26 @@ function App() {
   const operationInProgress = useRef(false);
   const picker = useRef<HTMLSelectElement>(null);
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
-  const visiblePreset = draft ?? activePreset;
+  const visiblePreset = editor ? draft ?? activePreset : activePreset;
+  const editing = editor && !!draft;
   const busy = operation !== null;
   const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(activePreset);
   const selectedKeybind = editingKey && draft?.rows[editingKey.rowIndex]?.[editingKey.keyIndex];
   const options = draft ? getKeyOptions(draft) : [];
   const selectedId = editingKey ? getKeyId(editingKey.rowIndex, editingKey.keyIndex) : '';
+
+  useEffect(() => {
+    const navigate = () => {
+      setEditor(window.location.hash === '#edit');
+      setEditingKey(null);
+      setHotkeyTrigger(null);
+      setPendingDiscard(null);
+      setPendingDelete(null);
+      setBackupParts(null);
+    };
+    window.addEventListener('hashchange', navigate);
+    return () => window.removeEventListener('hashchange', navigate);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -99,7 +114,7 @@ function App() {
   }
 
   function startEditing(mode: 'edit' | 'clone' | 'blank' = 'edit') {
-    if (!activePreset || operationInProgress.current || storageMode !== 'ready' || recovery) return;
+    if (!editor || !activePreset || operationInProgress.current || storageMode !== 'ready' || recovery) return;
     setDraft(mode === 'blank' ? createBlankPreset(activePreset) : mode === 'clone' ? createCustomPreset(activePreset, `${activePreset.name} (Copy)`) : clonePreset(activePreset));
     setEditingKey(null);
     setStatus(mode === 'edit' ? 'Editing preset' : 'Editing a new preset');
@@ -143,7 +158,7 @@ function App() {
   }
 
   function addHotkey(keyIds: string[], command: string, context: string, category: string) {
-    if (!visiblePreset || operationInProgress.current) return;
+    if (!editor || !visiblePreset || operationInProgress.current) return;
     setDraft(assignRecordedHotkey(draft ?? clonePreset(visiblePreset), keyIds, command, context, category));
     setHotkeyTrigger(null);
     setStatus('Hotkey added to draft. Save the preset to keep your changes.');
@@ -219,10 +234,16 @@ function App() {
         <div className="brand-mark" aria-hidden="true"><span /><span /><span /><span /></div>
         <div><p className="eyebrow">Command reference</p><h1>RTS Keymap Viewer</h1><p className="intro">Learn your layout. Build the muscle memory. Play faster.</p></div>
       </header>
+      <nav className="screen-nav" aria-label="App screens">
+        <a href="#view" aria-current={!editor ? 'page' : undefined} aria-disabled={busy} onClick={(event) => { if (busy) event.preventDefault(); }}>View</a>
+        <a href="#edit" aria-current={editor ? 'page' : undefined} aria-disabled={busy} onClick={(event) => { if (busy) event.preventDefault(); }}>Edit{draft && <span className="unsaved-nav"> · Unsaved</span>}</a>
+      </nav>
+      {editor && <p className="editor-screen-heading">Edit commands and manage presets. Return to View to see your saved layout.</p>}
       {visiblePreset && (
         <PresetControls
           presets={presets}
           preset={visiblePreset}
+          editor={editor}
           editing={!!draft}
           bundled={isBundled(visiblePreset.id)}
           busy={busy || storageMode === 'loading'}
@@ -240,7 +261,7 @@ function App() {
           onNew={() => startEditing('clone')}
           onBlank={() => startEditing('blank')}
           onEdit={() => startEditing()}
-          onAddHotkey={(trigger) => { if (!operationInProgress.current) setHotkeyTrigger(trigger); }}
+          onAddHotkey={(trigger) => { if (editor && !operationInProgress.current) setHotkeyTrigger(trigger); }}
           onCancel={(trigger) => { if (dirty) setPendingDiscard({ trigger, recovery: false }); else cancelEditing(); }}
           onSave={saveDraft}
           onFieldChange={(field, value) => setDraft((current) => current ? { ...current, [field]: value } : current)}
@@ -251,29 +272,29 @@ function App() {
         />
       )}
       {storageMode === 'unavailable' && <div className="recovery-banner">
-        <p>The bundled layout is available to view and export. Saving is unavailable until storage reconnects.</p>
-        <button type="button" className="secondary-button" onClick={() => { setStorageMode('loading'); setStatus('Loading local database...'); setLoadAttempt((attempt) => attempt + 1); }}>Retry storage</button>
+        <p>You can view the bundled layout. Open Edit to retry storage or export. Saving is unavailable until storage reconnects.</p>
+        {editor && <button type="button" className="secondary-button" onClick={() => { setStorageMode('loading'); setStatus('Loading local database...'); setLoadAttempt((attempt) => attempt + 1); }}>Retry storage</button>}
       </div>}
       {recovery && !draft && <div className="recovery-banner" role="region" aria-label="Recovered draft">
         <p>Unsaved draft found: <strong>{recovery.preset.name || 'Unnamed preset'}</strong>.</p>
-        <div className="mode-controls">
+        {editor ? <div className="mode-controls">
           <button type="button" disabled={storageMode !== 'ready'} onClick={() => {
             setActivePresetId(presets.some((preset) => preset.id === recovery.activePresetId) ? recovery.activePresetId : presets[0].id);
             setDraft(recovery.preset); setRecovery(null); setStatus('Recovered unsaved draft');
           }}>Restore draft</button>
           <button type="button" className="secondary-button" onClick={(event) => setPendingDiscard({ trigger: event.currentTarget, recovery: true })}>Discard recovery</button>
-        </div>
+        </div> : <a href="#edit">Review recovery in Edit</a>}
       </div>}
-      {draft && !recoveryAvailable && <p className="dialog-error" role="alert">Draft recovery is unavailable. Save your preset before closing this page.</p>}
+      {editor && draft && !recoveryAvailable && <p className="dialog-error" role="alert">Draft recovery is unavailable. Save your preset before closing this page.</p>}
       <div className="status-row">
         <p className={`database-status ${status.startsWith('Could not') ? 'status-error' : ''}`} aria-live="polite"><span aria-hidden="true" />{status}</p>
-        <p className="interaction-hint">{draft ? 'Use Add hotkey to record a binding, or select a key to edit' : 'Hover, tap, or focus a key to view its commands'}</p>
+        <p className="interaction-hint">{editing ? 'Use Add hotkey to record a binding, or select a key to edit' : 'Hover, tap, or focus a key to view its commands'}</p>
       </div>
-      {visiblePreset && <Keyboard key={`${visiblePreset.id}-${!!draft}`} preset={visiblePreset} editing={!!draft} busy={busy} selected={editingKey} query={query} onQueryChange={setQuery} onEditKey={(position, trigger) => { if (!operationInProgress.current) setEditingKey({ ...position, trigger }); }} />}
-      {editingKey && selectedKeybind && (
+      {visiblePreset && <Keyboard key={`${visiblePreset.id}-${editing}`} preset={visiblePreset} editor={editor} editing={editing} busy={busy} selected={editing ? editingKey : null} query={query} onQueryChange={setQuery} onEditKey={(position, trigger) => { if (!operationInProgress.current) setEditingKey({ ...position, trigger }); }} />}
+      {editor && editingKey && selectedKeybind && (
         <KeyEditor preset={draft!} key={selectedId} keybind={selectedKeybind} keyId={selectedId} label={options.find((option) => option.id === selectedId)?.label ?? selectedKeybind.label} options={options} busy={busy} trigger={editingKey.trigger} onClose={() => { if (!operationInProgress.current) setEditingKey(null); }} onChange={changeKey} />
       )}
-      {hotkeyTrigger && visiblePreset && (
+      {editor && hotkeyTrigger && visiblePreset && (
         <HotkeyRecorder preset={visiblePreset} trigger={hotkeyTrigger} onClose={() => setHotkeyTrigger(null)} onAdd={addHotkey} />
       )}
       {backupParts && <Dialog title="Download backup parts" returnFocusTo={backupParts.trigger} onClose={() => setBackupParts(null)} closeLabel="Close">

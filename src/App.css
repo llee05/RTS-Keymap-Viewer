@@ -429,3 +429,19 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
   .key:hover, :is(.mode-controls, .dialog-header, .search-controls) button:hover { transform: none; }
 }
+
+.screen-nav { display: flex; gap: 24px; margin: -12px 4px 22px; border-bottom: 1px solid var(--border); }
+.screen-nav a { padding: 8px 0; color: var(--muted); font-size: 0.9rem; text-decoration: none; border-bottom: 2px solid transparent; }
+.screen-nav a[aria-current="page"] { color: var(--accent-bright); border-bottom-color: var(--accent-bright); }
+.screen-nav a[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
+.screen-nav a:focus-visible, .command-results a:focus-visible, .recovery-banner a:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+.unsaved-nav { color: #f2ce77; font-size: 0.75rem; }
+.editor-screen-heading { margin: 0 4px 18px; color: var(--muted); font-size: 0.85rem; }
+.command-results a { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 10px 12px; background: var(--surface); color: var(--text); text-align: left; text-decoration: none; }
+.command-results a:hover { background: var(--surface-raised); }
+.command-results a span { min-width: 0; overflow-wrap: anywhere; }
+.recovery-banner a { color: var(--accent-bright); font-size: 0.85rem; }
+@media (max-width: 700px) {
+  .screen-nav { margin-top: -4px; margin-bottom: 16px; }
+  .editor-screen-heading { margin-bottom: 14px; }
+}

@@ -2,7 +2,7 @@ import { useRef, type RefObject } from 'react';
 import type { KeyboardPreset } from '../data/presets';
 
 type Props = {
-  presets: KeyboardPreset[]; preset: KeyboardPreset; editing: boolean; bundled: boolean;
+  presets: KeyboardPreset[]; preset: KeyboardPreset; editor: boolean; editing: boolean; bundled: boolean;
   busy: boolean; saving: boolean; storageAvailable: boolean; recoveryPending: boolean; dirty: boolean;
   canUndo: boolean; canRedo: boolean; validationErrors: string[];
   pickerRef: RefObject<HTMLSelectElement | null>;
@@ -14,7 +14,7 @@ type Props = {
   onDelete: (trigger: HTMLButtonElement) => void;
 };
 
-export function PresetControls({ presets, preset, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete }: Props) {
+export function PresetControls({ presets, preset, editor, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const editingBlocked = busy || !storageAvailable || recoveryPending;
   const invalidName = !preset.name.trim();
@@ -27,13 +27,13 @@ export function PresetControls({ presets, preset, editing, bundled, busy, saving
           <label htmlFor="preset">Active layout</label>
           <div className="select-wrap">
             <select id="preset" ref={pickerRef} value={preset.id} disabled={editing || busy} onChange={(event) => onSelect(event.target.value)}>
-              {presets.map((current) => <option key={current.id} value={current.id}>{editing && current.id === preset.id ? preset.name || 'Unnamed preset' : current.name}</option>)}
-              {editing && !presets.some((current) => current.id === preset.id) && <option value={preset.id}>{preset.name || 'Unnamed preset'}</option>}
+              {presets.map((current) => <option key={current.id} value={current.id}>{editor && editing && current.id === preset.id ? preset.name || 'Unnamed preset' : current.name}</option>)}
+              {editor && editing && !presets.some((current) => current.id === preset.id) && <option value={preset.id}>{preset.name || 'Unnamed preset'}</option>}
             </select>
           </div>
           <span className="game-badge">{preset.game}</span>
         </div>
-        <div className="mode-controls" aria-label="Preset actions">
+        {editor && <div className="mode-controls" aria-label="Preset actions">
           <button type="button" disabled={editingBlocked} onClick={(event) => onAddHotkey(event.currentTarget)}>Add hotkey</button>
           {editing ? <>
             <button type="button" className="secondary-button" disabled={busy} onClick={(event) => onCancel(event.currentTarget)}>Cancel</button>
@@ -43,11 +43,11 @@ export function PresetControls({ presets, preset, editing, bundled, busy, saving
             <button type="button" className="secondary-button" disabled={editingBlocked} onClick={onNew}>Clone preset</button>
             <button type="button" className="secondary-button" disabled={editingBlocked} onClick={onEdit}>Edit preset</button>
           </>}
-        </div>
+        </div>}
       </div>
-      {bundled && <p className="preset-notice">{editing ? 'Bundled edits reset on reload. Save as custom to keep them.' : 'Bundled layout · Clone preset to keep your changes.'}</p>}
-      {!!combinationErrors.length && <div className="preset-notice preset-validation"><p>Resolve these combinations before saving:</p><ul>{combinationErrors.map((error, index) => <li key={index}>{error}</li>)}</ul></div>}
-      {editing ? <>
+      {editor && bundled && <p className="preset-notice">{editing ? 'Bundled edits reset on reload. Save as custom to keep them.' : 'Bundled layout · Clone preset to keep your changes.'}</p>}
+      {!!combinationErrors.length && <div className="preset-notice preset-validation"><p>{editor ? 'Resolve these combinations before saving:' : 'This layout has invalid combinations. Open Edit to repair them.'}</p><ul>{combinationErrors.map((error, index) => <li key={index}>{error}</li>)}</ul></div>}
+      {editor && (editing ? <>
         <div className="draft-toolbar mode-controls">
           <span className="draft-indicator" role="status">{dirty ? 'Unsaved changes' : 'No changes yet'}</span>
           <button type="button" className="secondary-button" disabled={busy || !canUndo} onClick={onUndo}>Undo</button>
@@ -75,7 +75,7 @@ export function PresetControls({ presets, preset, editing, bundled, busy, saving
           }} />
         </div>
         <p className="preset-notice">Game: {preset.game}{preset.source && <><br />Source: {preset.source}</>}{preset.version && <><br />Version: {preset.version}</>}<br />Reference only; configure the actual bindings in the game.</p>
-      </details>}
+      </details>)}
     </section>
   );
 }
