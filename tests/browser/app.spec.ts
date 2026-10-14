@@ -53,7 +53,7 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   const dialog = await openKey(page);
   await expect(dialog).toHaveAccessibleName('Edit Q');
-  const commands = dialog.getByRole('textbox', { name: 'Q hotkeys' });
+  const commands = dialog.getByRole('textbox', { name: 'Commands for Q alone' });
   await expect(commands).toBeFocused();
   await commands.fill('');
   await page.keyboard.type('  First command  ');
@@ -62,13 +62,13 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await page.keyboard.type('Second command ');
   await expect(commands).toHaveValue('  First command  \n\nSecond command ');
   await dialog.getByLabel('Combination key').selectOption('5-0');
-  await dialog.getByLabel('Action', { exact: true }).fill('');
+  await dialog.getByLabel('Combination command', { exact: true }).fill('');
   await page.keyboard.type('Queue units');
   await page.keyboard.press('Enter');
   await expect(dialog.getByLabel('Combination key')).toHaveValue('5-0');
   await dialog.getByRole('button', { name: 'Add combination' }).focus();
   await page.keyboard.press('Space');
-  await expect(dialog.getByRole('textbox', { name: 'Q + Left Ctrl action' })).toHaveValue('Queue units');
+  await expect(dialog.getByRole('textbox', { name: 'Q + Left Ctrl command' })).toHaveValue('Queue units');
   await expect(dialog.getByLabel('Combination key').locator('option[value="2-1"]')).toHaveCount(0);
   await expect(dialog.getByLabel('Combination key').locator('option[value="5-0"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
@@ -88,7 +88,7 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await expect(page.getByLabel('Active layout')).toHaveValue(id);
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   await openKey(page);
-  await page.getByRole('textbox', { name: 'Q hotkeys' }).fill('Discard this command');
+  await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('Discard this command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await expect(key(page, '2-1')).toBeFocused();
   await cancelDraft(page);
@@ -165,7 +165,7 @@ test('recording supports sided multi-key combinations, search, highlighting, and
   await expect(key(page, '5-7')).toHaveClass(/key-combo-highlight/);
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   const editor = await openKey(page, '2-4');
-  await expect(editor.getByRole('textbox', { name: 'R + Right Ctrl + Left Shift action', exact: true })).toHaveValue('Queue reinforcements');
+  await expect(editor.getByRole('textbox', { name: 'R + Right Ctrl + Left Shift command', exact: true })).toHaveValue('Queue reinforcements');
   await editor.getByRole('button', { name: 'Remove R + Right Ctrl + Left Shift combination', exact: true }).click();
   await editor.getByRole('button', { name: 'Close editor' }).click();
   await cancelDraft(page);
@@ -384,7 +384,7 @@ test('saving locks editing and cancellation until commit and ignores repeated cl
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Committed name');
   await openKey(page);
-  await page.getByRole('textbox', { name: 'Q hotkeys' }).fill(' \n\n ');
+  await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill(' \n\n ');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.evaluate(() => {
     let hold = true;

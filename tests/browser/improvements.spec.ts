@@ -42,7 +42,7 @@ test('draft recovery preserves raw typing, undo and redo work, and saved selecti
   await page.getByRole('button', { name: 'Redo', exact: true }).click();
   await expect(page.getByLabel('Game', { exact: true })).toHaveValue('  Test game  ');
   await openKey(page);
-  await page.getByRole('textbox', { name: 'Q hotkeys' }).fill('  Raw command  \n\nSecond ');
+  await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('  Raw command  \n\nSecond ');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await expect(page.locator('.draft-indicator')).toHaveText('Unsaved changes');
   let warned = false;
@@ -54,7 +54,7 @@ test('draft recovery preserves raw typing, undo and redo work, and saved selecti
   await page.getByRole('button', { name: 'Restore draft' }).click();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('  Recovered preset  ');
   await openKey(page);
-  await expect(page.getByRole('textbox', { name: 'Q hotkeys' })).toHaveValue('  Raw command  \n\nSecond ');
+  await expect(page.getByRole('textbox', { name: 'Commands for Q alone' })).toHaveValue('  Raw command  \n\nSecond ');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('button', { name: 'Save preset', exact: true }).click();
   await expect(status(page)).toHaveText('Saved preset to local database');
@@ -145,10 +145,10 @@ test('manual combinations warn about conflicts across owners and allow distinct 
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   const editor = await openKey(page, '5-0');
   await editor.getByLabel('Combination key', { exact: true }).selectOption('3-1');
-  await editor.getByLabel('Action', { exact: true }).fill('Spectator selection');
+  await editor.getByLabel('Combination command', { exact: true }).fill('Spectator selection');
   await expect(editor.getByRole('alert')).toContainText('repeated');
   await expect(editor.getByRole('button', { name: 'Add combination' })).toBeDisabled();
-  await editor.getByLabel('Combination context', { exact: true }).fill('Spectator');
+  await editor.getByLabel('Combination context (optional)', { exact: true }).fill('Spectator');
   await editor.getByRole('button', { name: 'Add combination' }).click();
   await editor.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('button', { name: 'Save as custom' }).click();

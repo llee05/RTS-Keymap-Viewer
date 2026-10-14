@@ -44,7 +44,7 @@ test('New preset opens a blank custom draft that can be cancelled or saved and r
   await newPreset.click();
   await page.getByLabel('Name', { exact: true }).fill('New view preset');
   await openKey(page);
-  await page.getByRole('textbox', { name: 'Q hotkeys' }).fill('New command');
+  await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('New command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('button', { name: 'Save preset', exact: true }).click();
   await expect(status(page)).toHaveText('Saved preset to local database');
@@ -66,7 +66,7 @@ test('edit actions are isolated and switching to View retains the draft without 
   await expect(page.getByRole('button', { name: 'Clone preset' })).toBeVisible();
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   await openKey(page);
-  await page.getByRole('textbox', { name: 'Q hotkeys' }).fill('Editor draft command');
+  await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('Editor draft command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('link', { name: 'View', exact: true }).click();
   await expect(page.locator('button:not(.key)')).toHaveCount(1);
@@ -77,7 +77,7 @@ test('edit actions are isolated and switching to View retains the draft without 
   await expect(page.getByRole('tooltip')).not.toContainText('Editor draft command');
   await enterEditor(page);
   await openKey(page);
-  await expect(page.getByRole('textbox', { name: 'Q hotkeys' })).toHaveValue('Editor draft command');
+  await expect(page.getByRole('textbox', { name: 'Commands for Q alone' })).toHaveValue('Editor draft command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('button', { name: 'Save as custom' }).click();
   await expect(status(page)).toHaveText('Saved preset to local database');

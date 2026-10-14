@@ -24,6 +24,8 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   const released = useRef(false);
   const captureError = useRef('');
   const commandId = useId();
+  const commandHelpId = useId();
+  const metadataHelpId = useId();
   const helpId = useId();
   const previewId = useId();
   const labels = new Map(getKeyOptions(preset).map((option) => [option.id, option.label]));
@@ -94,12 +96,12 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
         if (!recording && keyIds.length && command.trim() && !error) onAdd(keyIds, command, context, category);
       }}>
         <label className="editor-label" htmlFor={commandId}>Command</label>
-        <input id={commandId} autoFocus value={command} placeholder="e.g. Select all military units" onChange={(event) => setCommand(event.target.value)} />
-        <p className="editor-help">The hotkey will appear on the keyboard. Changes stay in the draft until you save the preset.</p>
-        <p className="editor-help">For a single key, category and context describe all of its commands.</p>
+        <input id={commandId} aria-describedby={commandHelpId} autoFocus value={command} placeholder="e.g. Select all military units" onChange={(event) => setCommand(event.target.value)} />
+        <p className="editor-help" id={commandHelpId}>Describe what pressing the key or combination does. Changes stay in the draft until you save the preset.</p>
+        <p className="editor-help" id={metadataHelpId}>Category groups commands for filtering (e.g. Selection). Context describes when they apply (e.g. Combat or Spectator). Different contexts allow different commands for the same combination. For a single key, these labels apply to all its commands.</p>
         <div className="editor-fields">
-          <label>Category (optional)<input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Selection" /></label>
-          <label>Context (optional)<input value={context} onChange={(event) => setContext(event.target.value)} placeholder="e.g. In combat" /></label>
+          <label>Category (optional)<input aria-describedby={metadataHelpId} value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Selection" /></label>
+          <label>Context (optional)<input aria-describedby={metadataHelpId} value={context} onChange={(event) => setContext(event.target.value)} placeholder="e.g. Combat" /></label>
         </div>
         <p className="editor-label" id={previewId}>Hotkey</p>
         <p className="hotkey-preview" aria-labelledby={previewId} role="status">
