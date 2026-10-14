@@ -12,6 +12,7 @@ import { Keyboard } from './components/Keyboard';
 import { KeyEditor } from './components/KeyEditor';
 import { HotkeyRecorder } from './components/HotkeyRecorder';
 import { Dialog } from './components/Dialog';
+import { ThemePicker } from './components/ThemePicker';
 import { useDraft } from './hooks/useDraft';
 import { readActivePreset, rememberActivePreset, readRecoveredDraft, rememberDraft } from './data/browserState';
 
@@ -237,7 +238,8 @@ function App() {
     <main className="app">
       <header className="app-header">
         <div className="brand-mark" aria-hidden="true"><span /><span /><span /><span /></div>
-        <div><p className="eyebrow">Command reference</p><h1>RTS Keymap Viewer</h1><p className="intro">Learn your layout. Build the muscle memory. Play faster.</p></div>
+        <div className="brand-copy"><p className="eyebrow">Your command centre</p><h1>RTS Keymap Viewer</h1><p className="intro">Learn your layout. Build the muscle memory. Play faster.</p></div>
+        <ThemePicker />
       </header>
       <nav className="screen-nav" aria-label="App screens">
         <a href="#view" aria-current={!editor ? 'page' : undefined} aria-disabled={busy} onClick={(event) => { if (busy) event.preventDefault(); }}>View</a>

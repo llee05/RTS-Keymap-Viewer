@@ -42,7 +42,13 @@ Draft recovery is separate from saved presets. Changes are copied to browser-loc
 
 **Search commands or keys** matches command text, key labels, shortcut notation, categories, and contexts. Search ignores case and extra spaces. **Command category** filters the results. Each result shows a command and its shortcut, with category/context details; the count refers to commands rather than the number of participating keys. Select a result link, or press Enter in the search field, to focus the owning key and scroll it into view. Enter cycles through results; Escape in the search field clears the query and category. A matching combination highlights every participant. The Edit screen also provides **Next match** and **Clear search** buttons.
 
-Blue markers indicate assigned commands; purple markers indicate combination participants, including incoming combinations. The legend stays visible on mobile, where the keyboard retains full-size keys and scrolls sideways. On Edit, backup and management controls are collapsed under **More preset actions** to keep the board easier to reach.
+Accent-coloured markers indicate assigned commands; the second legend colour indicates combination participants, including incoming combinations. The legend stays visible on mobile, where the keyboard retains full-size keys and scrolls sideways. On Edit, backup and management controls are collapsed under **More preset actions** to keep the board easier to reach.
+
+### Colour themes
+
+Use **Colour theme** in the header to choose **Midnight** (cool blue), **Forest** (sage and green), or **Ember** (warm amber). Each dark palette styles the workspace, keycaps, search results, dialogs, and tooltips. Assignment and combination markers have distinct colours shown in the legend, with the same shapes and positions in every theme.
+
+Your choice is remembered in localStorage (`rts-keymap-theme`) for this browser and origin, independently of presets and backups. Clearing site storage restores Midnight. If browser storage is unavailable, you can still switch themes for the current session.
 
 ### Backups and preset management
 
@@ -60,7 +66,7 @@ Presets are stored in the browser's IndexedDB database `rts-keymap-viewer`, in t
 
 **Bundled presets are refreshed from source every time the app loads.** Edits saved directly to a bundled preset apply for the current session and reset on reload. The app explains this beside the preset controls. Use **Clone preset** or **Save as custom** to keep a customized version across reloads. **Save as custom** saves the edited draft with a new custom ID and adds “(Custom)” to its name.
 
-The active layout is remembered for the same browser profile and origin. If that layout no longer exists, the bundled default is selected. The selection and recovery draft use localStorage (`rts-keymap-active` and `rts-keymap-draft`); saved presets still use IndexedDB. Clearing site storage removes all three.
+The active layout is remembered for the same browser profile and origin. If that layout no longer exists, the bundled default is selected. The selection and recovery draft use localStorage (`rts-keymap-active` and `rts-keymap-draft`); saved presets still use IndexedDB. Clearing site storage removes saved presets, the active selection, recovery drafts, and the colour theme preference.
 
 The status message reports loading, editing, saving, and errors. If IndexedDB fails, the bundled board remains available to view, search, and export. Editing, importing, and deletion are disabled until **Edit → Retry storage** reconnects successfully. Existing custom layouts are not cleared during recovery.
 
@@ -119,7 +125,9 @@ Storage unit tests drive database request and transaction events through a contr
 | `src/components/KeyTooltip.tsx` | Portal tooltips positioned within the viewport and linked to keys. |
 | `src/components/Dialog.tsx` | Native modal dialog lifecycle, Tab containment, dismissal, and focus restoration. |
 | `src/App.css` | App layout, keyboard, editors, tooltips, and responsive styles. |
-| `src/index.css` | Global styles and theme variables. |
+| `src/index.css` | Global styles and all three colour palettes. |
+| `src/components/ThemePicker.tsx` | Accessible theme selection in the header. |
+| `src/data/theme.ts` | Theme choices, initial application, and optional localStorage preference. |
 | `src/main.tsx` | React entry point with StrictMode. |
 | `src/data/defaultPresets.ts` | Bundled keyboard layouts and commands. |
 | `src/data/presets.ts` | Preset types, IndexedDB storage, seeding, and migration helpers. |

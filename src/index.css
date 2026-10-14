@@ -1,33 +1,89 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #e8edf7;
-  background: #080b12;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --bg: #080b12;
-  --surface: #111722;
-  --surface-raised: #171e2b;
-  --border: #293346;
-  --muted: #8994a8;
-  --text: #e8edf7;
-  --accent: #6d8cff;
-  --accent-bright: #8aa2ff;
-  --success: #42d6a4;
+  color-scheme: dark;
+  --bg: #0b101a;
+  --surface: #121b2a;
+  --surface-raised: #1a2537;
+  --input: #0d1522;
+  --border: #2a374d;
+  --border-strong: #43536d;
+  --muted: #9aa9c0;
+  --text: #edf2fc;
+  --text-soft: #c4cfe1;
+  --accent: #829aff;
+  --accent-bright: #b0bfff;
+  --accent-solid: #405cc4;
+  --accent-end: #334ba8;
+  --key-top: #253249;
+  --key-bottom: #192437;
+  --key-shadow: #070c14;
+  --combination: #d8b1ff;
+  --success: #71d8b2;
+  --warning: #f2ce77;
+  --error: #ffaaaa;
+  color: var(--text);
+  background: var(--bg);
+}
+
+:root[data-theme="forest"] {
+  --bg: #0b1513;
+  --surface: #111f1b;
+  --surface-raised: #1b2d26;
+  --input: #0b1813;
+  --border: #2b4438;
+  --border-strong: #496658;
+  --muted: #a0b9ac;
+  --text: #eaf5ee;
+  --text-soft: #c2d9cb;
+  --accent: #69c7a5;
+  --accent-bright: #9de4c7;
+  --accent-solid: #17634f;
+  --accent-end: #10533f;
+  --key-top: #263d32;
+  --key-bottom: #192c23;
+  --key-shadow: #060e0a;
+  --combination: #d8c195;
+  --success: #8addae;
+  --warning: #efd388;
+}
+
+:root[data-theme="ember"] {
+  --bg: #19110e;
+  --surface: #251b16;
+  --surface-raised: #34271f;
+  --input: #1b130f;
+  --border: #4b382b;
+  --border-strong: #70523e;
+  --muted: #c2aa98;
+  --text: #fcf0e6;
+  --text-soft: #e1cbb9;
+  --accent: #e8ac72;
+  --accent-bright: #ffd1a3;
+  --accent-solid: #955020;
+  --accent-end: #7c401b;
+  --key-top: #443125;
+  --key-bottom: #2f231c;
+  --key-shadow: #100a07;
+  --combination: #c6b4ed;
+  --success: #a4d6a3;
+  --warning: #f0d17d;
 }
 
 * { box-sizing: border-box; }
-
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 8% -10%, rgba(92, 111, 214, 0.16), transparent 30rem),
-    radial-gradient(circle at 90% 20%, rgba(37, 210, 161, 0.06), transparent 24rem),
+    radial-gradient(ellipse at 12% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 42rem),
     var(--bg);
 }
-
 button, input, select, textarea { font: inherit; }
 button, select { -webkit-tap-highlight-color: transparent; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.8; }
+:is(input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #root { min-height: 100vh; }
+::selection { color: var(--text); background: var(--accent-solid); }

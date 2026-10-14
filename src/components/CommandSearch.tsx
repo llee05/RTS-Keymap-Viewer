@@ -25,7 +25,7 @@ export function CommandSearch({ editor, query, results, category, categories, on
         <button type="button" className="secondary-button" disabled={!results.length} onClick={onNext}>Next match</button></>}
       </div>
       <p className="search-status" role="status">
-        {searching ? results.length ? `${results.length} matching ${results.length === 1 ? 'command' : 'commands'}` : 'No matching commands' : 'Find a command, key, or shortcut. Enter jumps to a match; Escape clears search.'}
+        {searching ? results.length ? `${results.length} matching ${results.length === 1 ? 'command' : 'commands'}` : 'No matching commands' : 'Enter jumps to a match; Escape clears search.'}
       </p>
       {searching && !!results.length && <ul className="command-results" aria-label="Matching commands">
         {results.map((entry) => {
