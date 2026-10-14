@@ -4,6 +4,7 @@ import { findRecordedCombination, getKeyForCode } from '../data/hotkeyCapture';
 import { getBindingSignature, getCommandEntries, getKeyOptions } from '../data/keyboard';
 import { Dialog } from './Dialog';
 import { KeyPicker } from './KeyPicker';
+import { HotkeyAdvancedOptions } from './HotkeyAdvancedOptions';
 
 type Props = {
   preset: KeyboardPreset;
@@ -25,7 +26,6 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   const captureError = useRef('');
   const commandId = useId();
   const commandHelpId = useId();
-  const metadataHelpId = useId();
   const helpId = useId();
   const previewId = useId();
   const labels = new Map(getKeyOptions(preset).map((option) => [option.id, option.label]));
@@ -98,11 +98,6 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
         <label className="editor-label" htmlFor={commandId}>Command</label>
         <input id={commandId} aria-describedby={commandHelpId} autoFocus value={command} placeholder="e.g. Select all military units" onChange={(event) => setCommand(event.target.value)} />
         <p className="editor-help" id={commandHelpId}>Describe what pressing the key or combination does. Changes stay in the draft until you save the preset.</p>
-        <p className="editor-help" id={metadataHelpId}>Category groups commands for filtering (e.g. Selection). Context describes when they apply (e.g. Combat or Spectator). Different contexts allow different commands for the same combination. For a single key, these labels apply to all its commands.</p>
-        <div className="editor-fields">
-          <label>Category (optional)<input aria-describedby={metadataHelpId} value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Selection" /></label>
-          <label>Context (optional)<input aria-describedby={metadataHelpId} value={context} onChange={(event) => setContext(event.target.value)} placeholder="e.g. Combat" /></label>
-        </div>
         <p className="editor-label" id={previewId}>Hotkey</p>
         <p className="hotkey-preview" aria-labelledby={previewId} role="status">
           {keyIds.length ? keyIds.map((id, index) => <span className="hotkey-preview-key" key={id}>{index > 0 && <i aria-hidden="true">+</i>}<kbd>{labels.get(id)}</kbd></span>) : recording ? 'Listening for keys…' : 'No hotkey recorded'}
@@ -125,7 +120,8 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
             held.current.clear(); setRecording(false); setError(''); setKeyIds(ids);
           }} />
         </details>
-        {!!otherContexts.length && <p className="editor-help">Also used for: {otherContexts.map((entry) => `${entry.action} (${entry.context || 'General'})`).join('; ')}. Use a distinct context to retain separate assignments.</p>}
+        <HotkeyAdvancedOptions category={category} context={context} onCategoryChange={setCategory} onContextChange={setContext} scopeNote="For a single key, these labels apply to all its commands." />
+        {!!otherContexts.length && <p className="editor-help">Also used for: {otherContexts.map((entry) => `${entry.action} (${entry.context || 'General'})`).join('; ')}. Set a distinct context in Advanced options to retain separate assignments.</p>}
         {error && <p className="dialog-error" role="alert">{error}</p>}
         {!recording && existing && <p className="editor-help hotkey-conflict">Already assigned to “{existing.action}”. Replace hotkey updates this combination.</p>}
         <div className="dialog-actions mode-controls">

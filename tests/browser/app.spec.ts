@@ -55,6 +55,14 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await expect(dialog).toHaveAccessibleName('Edit Q');
   const commands = dialog.getByRole('textbox', { name: 'Commands for Q alone' });
   await expect(commands).toBeFocused();
+  await expect(dialog.getByLabel('Category (optional)', { exact: true })).toBeHidden();
+  await expect(dialog.getByLabel('Context (optional)', { exact: true })).toBeHidden();
+  const advanced = dialog.locator('fieldset > .hotkey-advanced-options > summary');
+  await advanced.focus();
+  await page.keyboard.press('Enter');
+  await dialog.getByLabel('Category (optional)', { exact: true }).fill('Production');
+  await dialog.getByLabel('Context (optional)', { exact: true }).fill('Combat');
+  await advanced.click();
   await commands.fill('');
   await page.keyboard.type('  First command  ');
   await page.keyboard.press('Enter');
@@ -78,6 +86,7 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await expect(status(page)).toHaveText('Saved preset to local database');
   let saved = (await storedPresets(page)).find((preset) => preset.id === id)!;
   expect(saved.rows[2][1].hotkeys).toEqual(['First command', 'Second command']);
+  expect(saved.rows[2][1]).toMatchObject({ category: 'Production', context: 'Combat' });
   expect(saved.rows[2][1].combinations![0].action).toBe('Queue units');
   await page.reload();
   await expect(status(page)).toHaveText('Loaded from local database');
@@ -87,7 +96,10 @@ test('key dialogs preserve multiline typing, combination inputs, focus, save/can
   await cancelDraft(page);
   await expect(page.getByLabel('Active layout')).toHaveValue(id);
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
-  await openKey(page);
+  const reopened = await openKey(page);
+  await expect(reopened.getByLabel('Category (optional)', { exact: true })).toBeHidden();
+  await expect(reopened.getByLabel('Category (optional)', { exact: true })).toHaveValue('Production');
+  await expect(reopened.getByLabel('Context (optional)', { exact: true })).toHaveValue('Combat');
   await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('Discard this command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await expect(key(page, '2-1')).toBeFocused();
@@ -103,6 +115,8 @@ test('Add hotkey records a key without clicking the keyboard and saves a persist
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
   await expect(dialog.getByLabel('Command', { exact: true })).toBeFocused();
+  await expect(dialog.getByLabel('Category (optional)', { exact: true })).toBeHidden();
+  await expect(dialog.getByLabel('Context (optional)', { exact: true })).toBeHidden();
   await dialog.getByLabel('Command', { exact: true }).fill('  Rally troops  ');
   await dialog.getByRole('button', { name: 'Record hotkey', exact: true }).click();
   await page.keyboard.down('KeyR');
@@ -144,6 +158,8 @@ test('recording supports sided multi-key combinations, search, highlighting, and
   await page.keyboard.up('ControlRight');
   await page.keyboard.press('Tab');
   await expect(dialog.locator('.manual-keys summary')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator('.hotkey-advanced-options summary')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
@@ -189,6 +205,8 @@ test('recording navigation keys does not close the dialog or move focus and unre
   }
   await page.keyboard.press('Tab');
   await expect(dialog.locator('.manual-keys summary')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator('.hotkey-advanced-options summary')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -346,6 +364,11 @@ test('the keyboard scrolls at full key size and dialogs fit small viewports with
   expect(bounds.y).toBeGreaterThanOrEqual(0);
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(500);
+  await dialog.getByRole('button', { name: 'Close editor' }).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.locator('.combo-editor > .hotkey-advanced-options > summary')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Close editor' })).toBeFocused();
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press('Tab');
     expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);

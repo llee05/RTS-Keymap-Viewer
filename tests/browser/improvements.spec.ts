@@ -120,8 +120,12 @@ test('on-screen entry and participant editing support three-key shortcuts withou
   await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
   await dialog.getByLabel('Command', { exact: true }).fill('Rally reinforcements');
+  await expect(dialog.getByLabel('Context (optional)', { exact: true })).toBeHidden();
+  await dialog.getByText('Advanced options', { exact: true }).focus();
+  await page.keyboard.press('Space');
   await dialog.getByLabel('Context (optional)', { exact: true }).fill('Combat');
   await dialog.getByLabel('Category (optional)', { exact: true }).fill('Units');
+  await dialog.getByText('Advanced options', { exact: true }).click();
   await dialog.locator('.manual-keys summary').click();
   for (const label of ['Left Ctrl', 'Left Shift', 'R']) await dialog.locator('.key-picker-options').getByRole('button', { name: label, exact: true }).click();
   await dialog.getByRole('button', { name: 'Add hotkey', exact: true }).click();
@@ -129,6 +133,13 @@ test('on-screen entry and participant editing support three-key shortcuts withou
   await expect(status(page)).toHaveText('Saved preset to local database');
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
   const editor = await openKey(page, '2-4');
+  const combinationOptions = editor.locator('.combination-item > .hotkey-advanced-options');
+  await expect(combinationOptions.getByLabel(/^Category for/)).toBeHidden();
+  await expect(combinationOptions.getByLabel(/^Context for/)).toHaveValue('Combat');
+  await combinationOptions.locator('summary').click();
+  await expect(combinationOptions.getByLabel(/^Category for/)).toHaveValue('Units');
+  await combinationOptions.getByLabel(/^Category for/).fill('Selection');
+  await combinationOptions.locator('summary').click();
   await editor.locator('.combination-details summary').click();
   await editor.locator('.combination-details .key-picker-options').getByRole('button', { name: 'Left Shift', exact: true }).click();
   await editor.locator('.combination-details .key-picker-options').getByRole('button', { name: 'Right Shift', exact: true }).click();
@@ -136,7 +147,7 @@ test('on-screen entry and participant editing support three-key shortcuts withou
   await page.getByRole('button', { name: 'Save preset', exact: true }).click();
   await expect(status(page)).toHaveText('Saved preset to local database');
   const saved = (await storedPresets(page)).find((preset) => preset.id === id)!;
-  expect(saved.rows[2][4].combinations![0]).toMatchObject({ keyId: '5-0', additionalKeyIds: ['4-11'], context: 'Combat', category: 'Units' });
+  expect(saved.rows[2][4].combinations![0]).toMatchObject({ keyId: '5-0', additionalKeyIds: ['4-11'], context: 'Combat', category: 'Selection' });
   await key(page, '4-11').focus();
   await expect(page.getByRole('tooltip')).toContainText('Rally reinforcements (Combat)');
 });
@@ -148,6 +159,7 @@ test('manual combinations warn about conflicts across owners and allow distinct 
   await editor.getByLabel('Combination command', { exact: true }).fill('Spectator selection');
   await expect(editor.getByRole('alert')).toContainText('repeated');
   await expect(editor.getByRole('button', { name: 'Add combination' })).toBeDisabled();
+  await editor.locator('.combo-editor > .hotkey-advanced-options > summary').click();
   await editor.getByLabel('Combination context (optional)', { exact: true }).fill('Spectator');
   await editor.getByRole('button', { name: 'Add combination' }).click();
   await editor.getByRole('button', { name: 'Close editor' }).click();
