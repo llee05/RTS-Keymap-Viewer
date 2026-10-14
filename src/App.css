@@ -401,6 +401,7 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   .intro { display: none; }
   h1 { font-size: 1.55rem; }
   .preset-panel-main { gap: 12px; padding: 12px; }
+  .preset-panel-view { gap: 8px; padding: 8px 12px; }
   .preset-picker { padding-top: 10px; }
   .preset-picker label { top: -2px; }
   .game-badge { display: none; }

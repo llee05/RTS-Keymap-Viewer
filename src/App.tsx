@@ -114,10 +114,15 @@ function App() {
   }
 
   function startEditing(mode: 'edit' | 'clone' | 'blank' = 'edit') {
-    if (!editor || !activePreset || operationInProgress.current || storageMode !== 'ready' || recovery) return;
+    if (!activePreset || draft || operationInProgress.current || storageMode !== 'ready' || recovery) return;
     setDraft(mode === 'blank' ? createBlankPreset(activePreset) : mode === 'clone' ? createCustomPreset(activePreset, `${activePreset.name} (Copy)`) : clonePreset(activePreset));
     setEditingKey(null);
     setStatus(mode === 'edit' ? 'Editing preset' : 'Editing a new preset');
+    if (!editor) {
+      setEditor(true);
+      window.location.hash = '#edit';
+      requestAnimationFrame(() => document.getElementById('preset-name')?.focus());
+    }
   }
 
   function cancelEditing() {

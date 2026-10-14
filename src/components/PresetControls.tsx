@@ -22,7 +22,7 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
   const combinationErrors = validationErrors.filter((error) => !error.startsWith('Name ') && !error.startsWith('Game '));
   return (
     <section className="preset-panel" aria-label="Preset controls" aria-busy={busy}>
-      <div className="preset-panel-main">
+      <div className={`preset-panel-main${editor ? '' : ' preset-panel-view'}`}>
         <div className="preset-picker">
           <label htmlFor="preset">Active layout</label>
           <div className="select-wrap">
@@ -33,6 +33,9 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
           </div>
           <span className="game-badge">{preset.game}</span>
         </div>
+        {!editor && <div className="mode-controls" aria-label="Preset actions">
+          <button type="button" disabled={editingBlocked || editing} onClick={onBlank}>New preset</button>
+        </div>}
         {editor && <div className="mode-controls" aria-label="Preset actions">
           <button type="button" disabled={editingBlocked} onClick={(event) => onAddHotkey(event.currentTarget)}>Add hotkey</button>
           {editing ? <>
