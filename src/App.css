@@ -487,6 +487,9 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   .theme-select-wrap { width: auto; }
   .theme-select-wrap select { width: 132px; min-height: 38px; }
   .theme-swatch { top: 13px; }
+  /* Reserve the picker width plus a 12px gap, including when Edit shows Unsaved. */
+  .screen-nav { padding-right: 144px; flex-wrap: wrap; row-gap: 4px; }
+  .screen-nav a { max-width: 100%; }
   .preset-picker select { width: 100%; }
   .preset-panel-view { flex-direction: row; align-items: flex-end; gap: 12px; padding: 16px; }
   .preset-panel-view .preset-picker { flex: 1; }

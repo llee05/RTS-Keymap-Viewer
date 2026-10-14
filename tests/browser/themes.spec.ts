@@ -65,7 +65,20 @@ test('themes keep narrow layouts contained and the keyboard scrollable', async (
   }
   await enterEditor(page);
   await page.getByRole('button', { name: 'Edit preset', exact: true }).click();
-  const editLink = await page.getByRole('link', { name: /^Edit/ }).boundingBox();
-  const themePicker = await page.getByLabel('Colour theme').boundingBox();
-  expect(editLink!.x + editLink!.width).toBeLessThan(themePicker!.x);
+  await expect(page.getByRole('link', { name: /^Edit/ })).toContainText('Unsaved');
+  for (const width of [320, 390, 700]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const theme of ['midnight', 'forest', 'ember']) {
+      await page.getByLabel('Colour theme').selectOption(theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      const editLink = await page.getByRole('link', { name: /^Edit/ }).boundingBox();
+      const themePicker = await page.getByLabel('Colour theme').boundingBox();
+      expect(editLink).not.toBeNull();
+      expect(themePicker).not.toBeNull();
+      const editRight = Math.round(editLink!.x + editLink!.width);
+      const pickerLeft = Math.round(themePicker!.x);
+      // Round subpixels while still requiring a visible gap between controls.
+      expect(editRight).toBeLessThanOrEqual(pickerLeft - 8);
+    }
+  }
 });
