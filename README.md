@@ -10,16 +10,22 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 - An **Add hotkey** button that records pressed keys and combinations and places commands on the keyboard automatically.
 - Highlighting of every participating key in combinations, including shortcuts such as Ctrl+Shift+R.
 - Command results with shortcut labels, category filtering, combination highlighting, and a **Next match** button. Search accepts notation such as `Ctrl+A` and `Control + A`.
-- Persistent markers for assigned commands and combinations.
 - Custom presets cloned from the active layout or created blank, with editable names, game labels, commands, combinations, categories, contexts, sources, and versions.
 - Undo/redo, an unsaved indicator, discard confirmation, browser exit warnings, and recoverable drafts.
 - Remembered active layouts and a bundled reference fallback with storage retry.
 - JSON import/export, full-library backups, and custom-preset deletion with confirmation.
 - Accessible key editor dialogs with keyboard focus containment, Escape dismissal, and focus restoration.
 - Browser-local persistence through IndexedDB.
-- A dark interface with responsive controls and a horizontally scrollable keyboard on smaller screens.
+- Three remembered dark colour themes: **Midnight**, **Forest**, and **Ember**, with responsive controls and a horizontally scrollable keyboard on smaller screens.
 
 Editing a preset changes the reference board. Configure the actual game bindings separately in the game.
+
+## Quick start
+
+1. Choose **Active layout**, then hover, tap, or focus a key to inspect its commands. Use **Search commands or keys** to find a command or shortcut.
+2. To customize existing assignments, open **Edit → Clone preset**. To start with an empty keyboard of the same shape, select **New preset** on View.
+3. Name the draft, add commands with **Add hotkey** or select individual keys to edit, then select **Save preset**.
+4. Use **Edit → More preset actions → Export preset** to download a backup. Saved layouts stay in this browser; import the JSON backup to move them elsewhere.
 
 ## Using the viewer
 
@@ -42,7 +48,7 @@ Draft recovery is separate from saved presets. Changes are copied to browser-loc
 
 ### Finding commands
 
-**Search commands or keys** matches command text, key labels, shortcut notation, categories, and contexts. Search ignores case and extra spaces. **Command category** filters the results. Each result shows a command and its shortcut, with category/context details; the count refers to commands rather than the number of participating keys. Select a result link, or press Enter in the search field, to focus the owning key and scroll it into view. Enter cycles through results; Escape in the search field clears the query and category. A matching combination highlights every participant. The Edit screen also provides **Next match** and **Clear search** buttons.
+**Search commands or keys** matches command text, key labels, shortcut notation, categories, and contexts. Search ignores case and extra spaces. **Command category** filters the results. Each result shows a command and its shortcut, with category/context details; the count refers to commands rather than the number of participating keys. Select a result, or press Enter in the search field, to focus the owning key and scroll it into view. Enter cycles through results; Escape in the search field clears the query and category. A matching combination highlights every participant. The Edit screen also provides **Next match** and **Clear search** buttons.
 
 Accent-coloured markers indicate assigned commands; the second legend colour indicates combination participants, including incoming combinations. The legend stays visible on mobile, where the keyboard retains full-size keys and scrolls sideways. On Edit, backup and management controls are collapsed under **More preset actions** to keep the board easier to reach.
 
@@ -56,9 +62,9 @@ Your choice is remembered in localStorage (`rts-keymap-theme`) for this browser 
 
 On **Edit**, with no draft open, expand **More preset actions**. **Export preset** downloads the active layout as JSON, including its name, game, commands, combinations, categories, contexts, source/version metadata, key sizes, and spacers. Use **Import presets** in another browser to restore it. Each import creates a new custom copy with a fresh ID and keeps the original name and game; existing presets and bundled layouts are never overwritten. Imports are validated before saving, and a batch is saved in a single transaction so a failed import does not leave partial copies.
 
-**Export all presets** backs up the full library, including the bundled layout. Large libraries are split into files of at most 100 presets and 2 MB each; the dialog offers an explicit download for every part. Import every part to restore the full library. A single preset over 2 MB must be shortened before export.
+**Export all presets** backs up the full library, including the bundled layout. Large libraries are split into files of at most 100 presets and 2 MiB (2,097,152 bytes, labelled “2 MB” in the app) each; the dialog offers an explicit download for every part. Import every part to restore the full library. If a single preset and its backup wrapper exceed this size, shorten the preset before export.
 
-The importer accepts an exported version 1 backup (`format: "rts-keymap-viewer"`, `version: 1`, `presets: [...]`), a single `KeyboardPreset`, or an array of presets. Files must be no larger than 2 MB and contain 1–100 presets. Each preset must have 1–30 nonempty rows, at most 500 key entries, and valid combination references; optional width and height must be positive multipliers no greater than 30.
+The importer accepts an exported version 1 backup (`format: "rts-keymap-viewer"`, `version: 1`, `presets: [...]`), a single `KeyboardPreset`, or an array of presets. Files must be no larger than 2 MiB and contain 1–100 presets. Each preset must have 1–30 nonempty rows, at most 500 key entries (including spacers), and valid combination references; optional width and height must be positive multipliers no greater than 30.
 
 **Delete preset** is available for custom layouts only. Confirm the named layout in the dialog to delete it from this browser, or select **Cancel** or press Escape to keep it. Export a layout before deleting it if you want a backup.
 
@@ -94,7 +100,7 @@ Open the URL printed by Vite, normally `http://localhost:5173/RTS-Keymap-Viewer/
 | `npm run build` | Run TypeScript checks and build static assets into `dist/`. |
 | `npm run preview` | Serve the production build locally after building. |
 
-Before handing off changes, run:
+For application changes, run the relevant checks before handing off:
 
 ```bash
 npm run lint
@@ -114,11 +120,13 @@ On Linux systems missing browser libraries, use `npx playwright install --with-d
 
 Storage unit tests drive database request and transaction events through a controlled stub to check commit timing, error propagation, and connection cleanup. The browser suite verifies persistence and rollback using real IndexedDB. Unit coverage reports describe the data modules; React components are exercised by the browser suite.
 
+For documentation-only changes, check the documented commands, paths, and behavior against the source and run `git diff --check`. Application tests are needed when code, configuration, or runtime behavior also changes.
+
 ## Project structure
 
 | Path | Responsibility |
 | --- | --- |
-| `src/App.tsx` | Preset selection, draft state, import/export, saving/deletion, and component coordination. |
+| `src/App.tsx` | View/Edit navigation, preset selection, draft recovery, import/export, saving/deletion, and component coordination. |
 | `src/components/PresetControls.tsx` | Preset selection, edit controls, and backup/management actions. |
 | `src/components/Keyboard.tsx` | Keyboard buttons, assignment markers, combination/search highlighting, and tooltip lifecycle. |
 | `src/components/CommandSearch.tsx` | Search input, result count, and navigation controls. |
@@ -143,7 +151,7 @@ Storage unit tests drive database request and transaction events through a contr
 | `src/data/hotkeyCapture.ts` | Physical key matching, combination conflict detection, and recorded draft assignments. |
 | `src/data/presetTransfer.ts` | Backup serialization and validation of imported JSON. |
 | `tests/*.test.ts` | Node regression checks for data and draft behavior. |
-| `tests/browser/*.spec.ts` | Desktop/mobile interaction, recovery, backup, persistence, error, and accessibility regressions. |
+| `tests/browser/*.spec.ts` | Desktop/mobile interaction, screen navigation, themes, recovery, backup, persistence, error, and accessibility regressions. |
 | `playwright.config.ts` | Desktop/mobile Chromium projects and the test preview server. |
 | `public/` | Static assets copied into the build. |
 | `vite.config.ts` | React plugin and deployment base path. |
@@ -156,3 +164,11 @@ To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are ar
 The GitHub Actions workflow runs lint, Node tests, the production build, and desktop/mobile Chromium browser tests with Node.js 22. Pull requests run the checks without deploying. Pushes to `main` and manual workflow runs deploy `dist/` to GitHub Pages after all checks pass. Configure the repository's GitHub Pages source as **GitHub Actions**.
 
 Vite currently uses `/RTS-Keymap-Viewer/` as its base path. Update `base` in `vite.config.ts` if deploying under a different path. The app runs entirely in the browser and requires only static hosting.
+
+## Copyright
+
+Copyright © 2026 llee05 and contributors.
+
+Age of Empires IV and other referenced game names, trademarks, and game content belong to their respective owners. RTS Keymap Viewer is an independent project and is not affiliated with or endorsed by the games' owners.
+
+Third-party dependencies and assets remain subject to their respective licenses and notices. This repository currently has no project license file; this copyright notice does not grant a license to the project's original code or documentation.
