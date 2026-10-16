@@ -12,7 +12,7 @@ export const defaultPresets: KeyboardPreset[] = [
     rows: [
       [
         { label: "Esc", hotkeys: [""], height: 0.65 },
-        { label: "", hotkeys: [], spacer: true, width: 0.5 },
+        { label: "", hotkeys: [], spacer: true, width: 1 },
         { label: "F1", category: "Selection", hotkeys: ["Select all military production buildings"], height: 0.65 },
         { label: "F2", category: "Selection", hotkeys: ["Select all economy buildings"], height: 0.65 },
         { label: "F3", category: "Selection", hotkeys: ["Select all technology buildings"], height: 0.65 },
@@ -61,7 +61,7 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: "\\", hotkeys: [""], width: 1.5 },
       ],
       [
-        { label: "Caps Lock", category: "Interface", hotkeys: ["Toggle Grid Mode"], width: 1.85 },
+        { label: "Caps Lock", category: "Interface", hotkeys: ["Toggle Grid Mode"], width: 1.75 },
         { label: "A", category: "Units", hotkeys: ["Attack Move"], combinations: [{keyId: "5-0", category: "Selection", action: "Select all units on screen"}] },
         { label: "S", category: "Units", hotkeys: ["Stop Unit"] },
         { label: "D", category: "Units", hotkeys: ["Delete Unit"] },
@@ -73,10 +73,10 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: "L", hotkeys: [""] },
         { label: ";", hotkeys: [""] },
         { label: "'", category: "Selection", hotkeys: ["Cycle through individual religious units"] },
-        { label: "Enter", hotkeys: [""], width: 2.35 },
+        { label: "Enter", hotkeys: [""], width: 2.25 },
       ],
       [
-        { label: "Shift", category: "Units", hotkeys: ["Queue Command"], width: 2.7 },
+        { label: "Shift", category: "Units", hotkeys: ["Queue Command"], width: 2.25 },
         { label: "Z", hotkeys: [""] },
         { label: "X", hotkeys: [""] },
         { label: "C", hotkeys: [""] },
@@ -87,7 +87,7 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: ",", category: "Selection", hotkeys: ["Cycle through idle military units"], combinations: [{keyId: "5-0", category: "Selection", action: "Select all idle military units"}] },
         { label: ".", category: "Selection", hotkeys: ["Cycle through idle economic units"], combinations: [{keyId: "5-0", category: "Selection", action: "Select all idle Villagers"}] },
         { label: "/", category: "Selection", hotkeys: ["Cycle through individual scout units"] },
-        { label: "Shift", category: "Units", hotkeys: ["Queue command"], width: 2.7 },
+        { label: "Shift", category: "Units", hotkeys: ["Queue command"], width: 2.75 },
       ],
       [
         { label: "Ctrl", category: "Control groups", hotkeys: ["Control Group Modifier"] },
@@ -107,7 +107,7 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: "Ctrl", category: "Control groups", hotkeys: [""] },
       ],
       [
-        { label: "", hotkeys: [""], spacer: true, width: 13 },
+        { label: "", hotkeys: [""], spacer: true, width: 12 },
         { label: "←", category: "Camera", hotkeys: ["Pan camera left"] },
         { label: "↓", category: "Camera", hotkeys: ["Pan camera down"] },
         { label: "→", category: "Camera", hotkeys: ["Pan camera right"] },

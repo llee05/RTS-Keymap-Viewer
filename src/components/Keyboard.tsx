@@ -99,8 +99,9 @@ export function Keyboard({ preset, editor, editing, busy, selected, query, onQue
               <div className="keyboard-row" key={rowIndex}>
                 {row.map((keybind, keyIndex) => {
                   const id = getKeyId(rowIndex, keyIndex);
-                  const width = `${(keybind.width ?? 1) * 64}px`;
-                  if (keybind.spacer) return <div key={id} style={{ width }} aria-hidden="true" />;
+                  // A wide key spans key positions, including the gutters between them.
+                  const width = `max(1px, calc(${keybind.width ?? 1} * var(--key-pitch) - var(--key-gap)))`;
+                  if (keybind.spacer) return <div className="keyboard-spacer" key={id} style={{ width }} aria-hidden="true" />;
                   const isAssigned = keybind.hotkeys.some((command) => command.trim());
                   const hasCombination = entries.some((entry) => entry.combination && entry.keyIds.includes(id));
                   const label = labels.get(id) ?? keybind.label;
@@ -161,7 +162,7 @@ export function Keyboard({ preset, editor, editing, busy, selected, query, onQue
                         else setActive({ id, element: event.currentTarget });
                       }}
                     >
-                      <span>{keybind.label}</span>
+                      <span className="key-label">{keybind.label}</span>
                       <span className="key-markers" aria-hidden="true">
                         {isAssigned && <i className="key-assigned-marker" />}
                         {hasCombination && <i className="key-combination-marker" />}

@@ -6,6 +6,27 @@ import { key, status, storedPresets, makeCustom, manage, cancelDraft, openKey, i
 
 installBrowserChecks();
 
+test('keyboard rows share aligned edges and the arrow cluster forms an inverted T', async ({ page }) => {
+  const geometry = await page.locator('.keyboard-row').evaluateAll((rows) => rows.map((row) => {
+    const keys = [...row.querySelectorAll<HTMLButtonElement>('.key')];
+    return keys.map((key) => {
+      const { left, right, width } = key.getBoundingClientRect();
+      return { left, right, width, center: left + width / 2 };
+    });
+  }));
+  const left = geometry[1][0].left;
+  const right = geometry[1].at(-1)!.right;
+  for (const row of geometry.slice(0, -1)) {
+    expect(Math.abs(row[0].left - left)).toBeLessThan(0.5);
+    expect(Math.abs(row.at(-1)!.right - right)).toBeLessThan(0.5);
+  }
+  const arrows = geometry.at(-1)!;
+  const up = geometry[5].at(-2)!;
+  expect(Math.abs(arrows[1].center - up.center)).toBeLessThan(0.5);
+  expect(Math.abs(arrows[2].right - right)).toBeLessThan(0.5);
+  expect(geometry[2][1].width).toBe(64);
+});
+
 test('tooltips describe focused keys, highlight both directions, and dismiss without moving focus', async ({ page }) => {
   await key(page, '3-1').scrollIntoViewIfNeeded();
   await key(page, '3-1').focus();

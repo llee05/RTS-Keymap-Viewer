@@ -5,6 +5,7 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 ## Current features
 
 - One bundled preset: **Age of Empires IV Default**, including function keys, arrow keys, and keys with different widths and heights.
+- Even keyboard gutters, aligned bundled row edges, and an inverted-T arrow cluster, with consistent key labels in View and Edit.
 - Command tooltips on key hover, touch, or keyboard focus, including combinations owned by other participating keys.
 - Arrow-key navigation across the keyboard, persistent assignment markers, and reduced-motion support.
 - An **Add hotkey** button that records pressed keys and combinations and places commands on the keyboard automatically.
@@ -158,6 +159,8 @@ For documentation-only changes, check the documented commands, paths, and behavi
 | `.github/workflows/deploy.yml` | Build and deployment to GitHub Pages. |
 
 To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. `KeyCombination.keyId` identifies the first target, and optional `additionalKeyIds` stores the remaining targets for combinations with three or more keys. Existing two-key presets and version 1 backups remain compatible. Keep those references in sync when changing a layout. See [AGENTS.md](AGENTS.md) for contributor guidance.
+
+Key widths use keyboard units: a standard key is 64px wide with a 10px gutter, and wider keys include the gutters they span (a 2-unit key is 138px wide). Spacers follow the same width rule and never shrink. Heights remain multiples of 64px. Existing custom presets keep their stored dimensions and assignments; their rendered widths use the same spacing rule.
 
 ## Deployment
 
