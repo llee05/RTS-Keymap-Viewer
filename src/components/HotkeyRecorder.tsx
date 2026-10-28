@@ -54,7 +54,6 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
 
   function toggleRecording() {
     if (recording) {
-      held.current.clear();
       released.current = false;
       hadModifier.current = false;
       if (captureError.current) {
@@ -78,7 +77,7 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   }
 
   function recordDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!recording) return;
+    if (!recording && !(event.repeat && held.current.has(event.code))) return;
     event.preventDefault();
     event.stopPropagation();
     if (event.repeat || held.current.has(event.code)) return;
@@ -101,16 +100,16 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   }
 
   function recordUp(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!recording) return;
+    if (!recording && !held.current.has(event.code)) return;
     event.preventDefault();
     event.stopPropagation();
     if (!held.current.delete(event.code)) return;
+    if (!recording) return;
     released.current = true;
     const isModifierCode = (code: string) => /^(Control|Shift|Alt|Meta|OS)/.test(code);
     const metaReleased = /^(Meta|OS)/.test(event.code) || event.key === 'Meta';
     const modifiersHeld = [...held.current].some(isModifierCode);
     if (!held.current.size || metaReleased || (hadModifier.current && !modifiersHeld)) {
-      held.current.clear();
       hadModifier.current = false;
       setRecording(false);
     }

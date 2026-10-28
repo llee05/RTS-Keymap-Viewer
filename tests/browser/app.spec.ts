@@ -308,6 +308,42 @@ test('completes recording when modifier keys are released without trailing keyup
   await page.keyboard.up('KeyB');
 });
 
+test('completed recordings suppress held navigation key repeats and trailing releases', async ({ page }) => {
+  await makeCustom(page);
+  await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
+  await dialog.getByLabel('Command', { exact: true }).fill('Navigation chord');
+  const recordButton = dialog.getByRole('button', { name: 'Record hotkey', exact: true });
+
+  for (const completion of ['modifier release', 'manual stop']) {
+    for (const code of ['Enter', 'Tab', 'Space']) {
+      await recordButton.click();
+      await page.keyboard.down('ShiftLeft');
+      await page.keyboard.down(code);
+      if (completion === 'modifier release') {
+        await page.keyboard.up('ShiftLeft');
+      } else {
+        await dialog.getByRole('button', { name: 'Stop recording', exact: true }).click();
+      }
+      await expect(recordButton).toBeVisible();
+      const captured = await dialog.getByRole('status').locator('kbd').allTextContents();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveCount(2);
+      await page.keyboard.down(code);
+      await expect(recordButton).toBeFocused();
+      await expect(recordButton).toBeVisible();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveText(captured);
+      await page.keyboard.up(code);
+      if (completion === 'manual stop') await page.keyboard.up('ShiftLeft');
+      await expect(recordButton).toBeFocused();
+      await expect(recordButton).toBeVisible();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveText(captured);
+    }
+  }
+
+  await page.keyboard.press('Enter');
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+});
+
 test('export and import round trip the layout with a fresh custom ID', async ({ page }) => {
   const id = await makeCustom(page, 'Backup preset');
   const original = (await storedPresets(page)).find((preset) => preset.id === id)!;
