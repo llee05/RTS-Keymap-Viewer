@@ -98,11 +98,67 @@ export function displayShortcut(shortcut: string): string {
   }).join(' + ');
 }
 
+function parseChordQuery(preset: KeyboardPreset, normalized: string): { chord: string[]; textTerms: string[] } | null {
+  if (!normalized.includes('+')) return null;
+  const rawParts = normalized.split('+').map((part) => part.trim()).filter(Boolean);
+  if (rawParts.length < 2) return null;
+
+  const keyLabels = new Set<string>();
+  for (const option of getKeyOptions(preset)) {
+    const norm = normalizeSearch(option.label);
+    keyLabels.add(norm);
+    keyLabels.add(norm.replace(/^(left|right) /, ''));
+  }
+  for (const row of preset.rows) {
+    for (const key of row) {
+      if (key.label) {
+        const norm = normalizeSearch(key.label);
+        keyLabels.add(norm);
+        keyLabels.add(norm.replace(/^(left|right) /, ''));
+      }
+    }
+  }
+  for (const alias of ['ctrl', 'control', 'shift', 'alt', 'super', 'meta', 'cmd', 'command', 'esc', 'escape']) {
+    keyLabels.add(alias);
+  }
+
+  const textTerms: string[] = [];
+  const chord: string[] = [];
+
+  const firstWords = rawParts[0].split(/\s+/).filter(Boolean);
+  if (!firstWords.length) return null;
+  if (firstWords.length >= 2 && keyLabels.has(firstWords.slice(-2).join(' '))) {
+    chord.push(firstWords.slice(-2).join(' '));
+    textTerms.push(...firstWords.slice(0, -2));
+  } else {
+    chord.push(firstWords[firstWords.length - 1]);
+    textTerms.push(...firstWords.slice(0, -1));
+  }
+
+  for (let i = 1; i < rawParts.length - 1; i++) {
+    const part = rawParts[i].trim();
+    if (!part) return null;
+    chord.push(part);
+  }
+
+  const lastWords = rawParts[rawParts.length - 1].split(/\s+/).filter(Boolean);
+  if (!lastWords.length) return null;
+  if (lastWords.length >= 2 && keyLabels.has(lastWords.slice(0, 2).join(' '))) {
+    chord.push(lastWords.slice(0, 2).join(' '));
+    textTerms.push(...lastWords.slice(2));
+  } else {
+    chord.push(lastWords[0]);
+    textTerms.push(...lastWords.slice(1));
+  }
+
+  return { chord, textTerms };
+}
+
 export function findCommandResults(preset: KeyboardPreset, query: string, category = ''): CommandEntry[] {
   const normalized = normalizeSearch(query);
   if (!normalized && !category) return [];
   const terms = normalized.split(/\s+/).filter(Boolean);
-  const chord = normalized.includes('+') ? normalized.split('+').map((part) => part.trim()).filter(Boolean) : null;
+  const parsedChord = parseChordQuery(preset, normalized);
   const contains = (text: string) => terms.every((term) => normalizeSearch(text).includes(term));
   const entries = getCommandEntries(preset);
   // Keys without commands remain discoverable by their label.
@@ -113,14 +169,16 @@ export function findCommandResults(preset: KeyboardPreset, query: string, catego
   }
   return entries.filter((entry) => {
     if (category && entry.category !== category) return false;
-    if (chord && chord.length > 1) {
+    if (parsedChord && parsedChord.chord.length > 1) {
       const compact = (text: string) => normalizeSearch(text).replace(/\s*\+\s*/g, '+');
-      if (compact(entry.action).includes(compact(query))) return true;
+      if (compact(`${entry.action} ${entry.context} ${entry.category}`).includes(compact(query))) return true;
       const parts = normalizeSearch(entry.shortcut).split(' + ');
-      if (parts.length !== chord.length) return false;
-      const requested = [...chord].sort();
-      const actual = parts.map((part) => chord.some((term) => term === part) ? part : part.replace(/^(left|right) /, '')).sort();
-      return actual.every((part, index) => part === requested[index]);
+      if (parts.length !== parsedChord.chord.length) return false;
+      const requested = [...parsedChord.chord].sort();
+      const actual = parts.map((part) => parsedChord.chord.some((term) => term === part) ? part : part.replace(/^(left|right) /, '')).sort();
+      if (!actual.every((part, index) => part === requested[index])) return false;
+      const haystack = `${entry.shortcut} ${entry.action} ${entry.context} ${entry.category}`;
+      return parsedChord.textTerms.every((term) => normalizeSearch(haystack).includes(term));
     }
     return contains(`${entry.shortcut} ${entry.action} ${entry.context} ${entry.category}`);
   });
