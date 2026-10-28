@@ -273,6 +273,41 @@ test('unsupported keys clear the recording, conflicts require replacement, and d
   expect(saved.rows[3][1].combinations).toEqual([{ ...before.rows[3][1].combinations![0], action: 'Updated selection' }]);
 });
 
+test('completes recording when modifier keys are released without trailing keyup and retains keys on stop recording', async ({ page }) => {
+  await makeCustom(page);
+  await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
+  await dialog.getByLabel('Command', { exact: true }).fill('Mac command test');
+
+  const recordButton = dialog.getByRole('button', { name: 'Record hotkey', exact: true });
+  await recordButton.click();
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+
+  // Simulate macOS Meta shortcut where keyup for the character key is swallowed by the OS
+  await page.keyboard.down('MetaLeft');
+  await page.keyboard.down('KeyA');
+  await page.keyboard.up('MetaLeft');
+  await page.keyboard.up('KeyA');
+
+  await expect(dialog.getByRole('button', { name: 'Record hotkey', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Super');
+  await expect(dialog.getByRole('status')).toContainText('A');
+
+  // Retain captured keys when Stop recording is clicked manually
+  await recordButton.click();
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+  await page.keyboard.down('ControlLeft');
+  await page.keyboard.down('KeyB');
+  await dialog.getByRole('button', { name: 'Stop recording', exact: true }).click();
+  await page.keyboard.up('ControlLeft');
+  await page.keyboard.up('KeyB');
+
+  await expect(dialog.getByRole('button', { name: 'Record hotkey', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Ctrl');
+  await expect(dialog.getByRole('status')).toContainText('B');
+  await expect(dialog.getByRole('button', { name: 'Add hotkey', exact: true })).toBeEnabled();
+});
+
 test('export and import round trip the layout with a fresh custom ID', async ({ page }) => {
   const id = await makeCustom(page, 'Backup preset');
   const original = (await storedPresets(page)).find((preset) => preset.id === id)!;
