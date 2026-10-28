@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { enterEditor, installBrowserChecks, key, makeCustom, manage } from './helpers';
+import { enterEditor, installBrowserChecks, key, makeCustom, manage, status } from './helpers';
 
 installBrowserChecks(false);
 
@@ -128,4 +128,57 @@ test('custom presets print their custom title and inline commands', async ({ pag
   const printHeader = page.locator('.print-header');
   await expect(printHeader.locator('.print-title')).toHaveText('My Custom Layout');
   await expect(key(page, '2-1').locator('.key-inline-command')).toHaveText('Scout');
+});
+
+test('wide imported boards scale every row to the printable width', async ({ page }) => {
+  await page.setViewportSize({ width: 718, height: 1000 });
+  await enterEditor(page);
+  await manage(page);
+  const commandKey = (label: string, width = 1, height = 1) => ({ label, width, height, hotkeys: ['Command'] });
+  const layouts = [
+    [Array.from({ length: 19 }, (_, index) => commandKey(`Key ${index}`))],
+    [
+      [commandKey('Tall', 2.5, 2), { label: '', width: 30, spacer: true, hotkeys: [''] }, commandKey('End', 30)],
+      Array.from({ length: 497 }, (_, index) => commandKey(`Tiny ${index}`, 0.01)),
+    ],
+  ];
+
+  for (const [index, rows] of layouts.entries()) {
+    await page.getByLabel('Import preset JSON').setInputFiles({
+      name: 'wide.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ id: 'wide', name: `Wide ${index}`, game: 'Test', rows })),
+    });
+    await expect(status(page)).toContainText('Imported 1 preset');
+
+    for (const screen of ['View', 'Edit']) {
+      await page.getByRole('link', { name: screen, exact: true }).click();
+      await page.emulateMedia({ media: 'print' });
+      const bounds = await page.locator('.keyboard-frame').evaluate((frame) => {
+        const area = frame.getBoundingClientRect();
+        const board = frame.querySelector('.keyboard')!.getBoundingClientRect();
+        return {
+          left: area.left,
+          right: area.right,
+          boardBottom: board.bottom,
+          listTop: document.querySelector('.print-command-list')!.getBoundingClientRect().top,
+          keys: [...frame.querySelectorAll('.key, .keyboard-spacer')].map((element) => {
+            const rect = element.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, width: rect.width };
+          }),
+        };
+      });
+      expect(bounds.right - bounds.left).toBeLessThanOrEqual(718);
+      expect(bounds.keys).toHaveLength(rows.flat().length);
+      for (const rect of bounds.keys) {
+        expect(rect.width).toBeGreaterThan(0);
+        expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1);
+        expect(rect.right).toBeLessThanOrEqual(bounds.right + 1);
+      }
+      expect(bounds.listTop).toBeGreaterThan(bounds.boardBottom);
+      await expect(page.locator('.print-title')).toHaveText(`Wide ${index}`);
+      await page.emulateMedia({ media: 'screen' });
+    }
+    await manage(page);
+  }
 });

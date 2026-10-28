@@ -649,6 +649,7 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
 
   /* Board panel & keyboard */
   .board-panel {
+    overflow: visible;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
@@ -659,6 +660,7 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   }
 
   .keyboard-frame {
+    container-type: inline-size;
     overflow: visible !important;
     padding: 0 !important;
     border: none !important;
@@ -668,11 +670,13 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   }
 
   .keyboard {
+    --key-min-width: 10px;
     --key-size: 42px !important;
     --key-gap: 5px !important;
     --key-pitch: calc(var(--key-size) + var(--key-gap)) !important;
     margin: 0 auto !important;
     width: max-content !important;
+    zoom: min(1, tan(atan2(100cqw, var(--board-width))));
   }
 
   .keyboard-row {
@@ -682,7 +686,9 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   .key {
     padding: 3px 5px !important;
     border-radius: 4px !important;
-    border: 1px solid #222222 !important;
+    border: none !important;
+    outline: 1px solid #222222 !important;
+    outline-offset: -1px !important;
     background: #ffffff !important;
     background-image: none !important;
     color: #000000 !important;

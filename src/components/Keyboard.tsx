@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import type { KeyboardPreset } from '../data/presets';
 import type { KeyPosition } from '../data/presetEditing';
 import { findCommandResults, getCommandEntries, getKeyId, getKeyOptions, getRelatedKeyIds, type CommandEntry } from '../data/keyboard';
@@ -18,6 +18,10 @@ type Props = {
 };
 type ActiveKey = { id: string; element: HTMLButtonElement };
 
+function keyWidth(width = 1, spacer = false) {
+  return `max(${spacer ? '1px' : 'var(--key-min-width, 1px)'}, calc(${width} * var(--key-pitch) - var(--key-gap)))`;
+}
+
 export function Keyboard({ preset, editor, editing, busy, selected, query, onQueryChange, onEditKey }: Props) {
   const [category, setCategory] = useState('');
   const [active, setActive] = useState<ActiveKey | null>(null);
@@ -28,6 +32,7 @@ export function Keyboard({ preset, editor, editing, busy, selected, query, onQue
   const options = getKeyOptions(preset);
   const labels = new Map(options.map((option) => [option.id, option.label]));
   const entries = getCommandEntries(preset);
+  const boardWidth = `max(${preset.rows.map((row) => `calc(${row.map((key) => keyWidth(key.width, key.spacer)).join(' + ')} + ${Math.max(0, row.length - 1)} * var(--key-gap))`).join(', ')})`;
   const categories = [...new Set(entries.map((entry) => entry.category))].sort();
   const results = findCommandResults(preset, query, category);
   const matches = new Set(results.flatMap((entry) => entry.keyIds));
@@ -97,13 +102,13 @@ export function Keyboard({ preset, editor, editing, busy, selected, query, onQue
         <PrintHeader preset={preset} options={options} />
         <PrintLegend />
         <div className="keyboard-frame" ref={board}>
-            <div className="keyboard">
+            <div className="keyboard" style={{ '--board-width': boardWidth } as CSSProperties}>
               {preset.rows.map((row, rowIndex) => (
                 <div className="keyboard-row" key={rowIndex}>
                   {row.map((keybind, keyIndex) => {
                     const id = getKeyId(rowIndex, keyIndex);
                     // A wide key spans key positions, including the gutters between them.
-                    const width = `max(1px, calc(${keybind.width ?? 1} * var(--key-pitch) - var(--key-gap)))`;
+                    const width = keyWidth(keybind.width, keybind.spacer);
                     if (keybind.spacer) return <div className="keyboard-spacer" key={id} style={{ width }} aria-hidden="true" />;
                     const isAssigned = keybind.hotkeys.some((command) => command.trim());
                     const hasCombination = entries.some((entry) => entry.combination && entry.keyIds.includes(id));
