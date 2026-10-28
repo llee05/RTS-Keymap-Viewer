@@ -142,7 +142,7 @@ For documentation-only changes, check the documented commands, paths, and behavi
 | `src/data/theme.ts` | Theme choices, initial application, and optional localStorage preference. |
 | `src/main.tsx` | React entry point with StrictMode. |
 | `src/data/defaultPresets.ts` | Bundled keyboard layouts and commands. |
-| `src/data/presets.ts` | Preset types, IndexedDB storage, seeding, and migration helpers. |
+| `src/data/presets.ts` | Preset types, IndexedDB storage, and seeding. |
 | `src/data/presetValidation.ts` | Combination validation before saving and explanations for invalid saved combinations. |
 | `src/data/presetEditing.ts` | Deep cloning, draft updates, custom IDs, and command normalization. |
 | `src/data/keyboard.ts` | Key labels, command results, categories, related keys, and canonical shortcut signatures. |
@@ -160,7 +160,7 @@ For documentation-only changes, check the documented commands, paths, and behavi
 
 To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. `KeyCombination.keyId` identifies the first target, and optional `additionalKeyIds` stores the remaining targets for combinations with three or more keys. Existing two-key presets and version 1 backups remain compatible. Keep those references in sync when changing a layout. See [AGENTS.md](AGENTS.md) for contributor guidance.
 
-Key widths use keyboard units: a standard key is 64px wide with a 10px gutter, and wider keys include the gutters they span (a 2-unit key is 138px wide). Spacers follow the same width rule and never shrink. Heights remain multiples of 64px. Existing custom presets keep their stored dimensions and assignments; their rendered widths use the same spacing rule.
+Key widths use keyboard units: a standard key is 64px wide with a 10px gutter, and wider keys include the gutters they span (a 2-unit key is 138px wide). Spacers follow the same width rule and never shrink. Heights scale from 64px (`(height ?? 1) * 64px`). Existing custom presets keep their stored dimensions and assignments; their rendered widths use the same spacing rule.
 
 ## Deployment
 

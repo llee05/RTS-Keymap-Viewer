@@ -82,72 +82,6 @@ async function seedDefaultPresets(database: IDBDatabase) {
   await writeToStore(database, (store) => defaultPresets.forEach((preset) => store.put(preset)));
 }
 
-function cloneKeybind(keybind: Keybind): Keybind {
-  return {
-    ...keybind,
-    hotkeys: [...keybind.hotkeys],
-    combinations: keybind.combinations?.map((combination) => ({
-      ...combination,
-      ...(combination.additionalKeyIds ? { additionalKeyIds: [...combination.additionalKeyIds] } : {}),
-    })),
-  };
-}
-
-function hasFunctionRow(preset: KeyboardPreset): boolean {
-  return preset.rows[0]?.some((keybind) => keybind.label === "F1") ?? false;
-}
-
-function addMissingDefaultRows(preset: KeyboardPreset): KeyboardPreset {
-  const defaultPreset = defaultPresets.find((currentPreset) => currentPreset.id === preset.id);
-
-  if (!defaultPreset || hasFunctionRow(preset)) {
-    return preset;
-  }
-
-  const functionRow = defaultPreset.rows[0].map(cloneKeybind);
-
-  return {
-    ...preset,
-    rows: [functionRow, ...preset.rows],
-  };
-}
-
-const arrowLabelReplacements = new Map([
-  ["UP", "↑"],
-  ["LEFT", "←"],
-  ["DOWN", "↓"],
-  ["RIGHT", "→"],
-]);
-
-function replaceArrowLabels(preset: KeyboardPreset): KeyboardPreset {
-  if (!defaultPresets.some((defaultPreset) => defaultPreset.id === preset.id)) {
-    return preset;
-  }
-
-  let changed = false;
-  const rows = preset.rows.map((row) =>
-    row.map((keybind) => {
-      const replacement = arrowLabelReplacements.get(keybind.label);
-
-      if (!replacement) {
-        return keybind;
-      }
-
-      changed = true;
-      return {
-        ...keybind,
-        label: replacement,
-      };
-    }),
-  );
-
-  return changed ? { ...preset, rows } : preset;
-}
-
-function migratePreset(preset: KeyboardPreset): KeyboardPreset {
-  return replaceArrowLabels(addMissingDefaultRows(preset));
-}
-
 export async function loadPresets(): Promise<KeyboardPreset[]> {
   const database = await openPresetDatabase();
   try {
@@ -159,9 +93,7 @@ export async function loadPresets(): Promise<KeyboardPreset[]> {
 
     if (presets.length > 0) {
       const defaultPresetIds = new Set(defaultPresets.map((preset) => preset.id));
-      const customPresets = presets
-        .filter((preset) => !defaultPresetIds.has(preset.id))
-        .map(migratePreset);
+      const customPresets = presets.filter((preset) => !defaultPresetIds.has(preset.id));
 
       return [...defaultPresets, ...customPresets];
     }
