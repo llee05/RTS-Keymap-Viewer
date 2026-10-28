@@ -127,13 +127,10 @@ function parseChordQuery(preset: KeyboardPreset, normalized: string): { chord: s
 
   const firstWords = rawParts[0].split(/\s+/).filter(Boolean);
   if (!firstWords.length) return null;
-  if (firstWords.length >= 2 && keyLabels.has(firstWords.slice(-2).join(' '))) {
-    chord.push(firstWords.slice(-2).join(' '));
-    textTerms.push(...firstWords.slice(0, -2));
-  } else {
-    chord.push(firstWords[firstWords.length - 1]);
-    textTerms.push(...firstWords.slice(0, -1));
-  }
+  let firstLabelLength = firstWords.length;
+  while (firstLabelLength > 1 && !keyLabels.has(firstWords.slice(-firstLabelLength).join(' '))) firstLabelLength--;
+  chord.push(firstWords.slice(-firstLabelLength).join(' '));
+  textTerms.push(...firstWords.slice(0, -firstLabelLength));
 
   for (let i = 1; i < rawParts.length - 1; i++) {
     const part = rawParts[i].trim();
@@ -143,13 +140,10 @@ function parseChordQuery(preset: KeyboardPreset, normalized: string): { chord: s
 
   const lastWords = rawParts[rawParts.length - 1].split(/\s+/).filter(Boolean);
   if (!lastWords.length) return null;
-  if (lastWords.length >= 2 && keyLabels.has(lastWords.slice(0, 2).join(' '))) {
-    chord.push(lastWords.slice(0, 2).join(' '));
-    textTerms.push(...lastWords.slice(2));
-  } else {
-    chord.push(lastWords[0]);
-    textTerms.push(...lastWords.slice(1));
-  }
+  let lastLabelLength = lastWords.length;
+  while (lastLabelLength > 1 && !keyLabels.has(lastWords.slice(0, lastLabelLength).join(' '))) lastLabelLength--;
+  chord.push(lastWords.slice(0, lastLabelLength).join(' '));
+  textTerms.push(...lastWords.slice(lastLabelLength));
 
   return { chord, textTerms };
 }

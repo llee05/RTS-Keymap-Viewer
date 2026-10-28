@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { defaultPresets } from '../src/data/defaultPresets.ts';
 import { findCommandResults, findMatchingKeys, getKeyOptions, getRelatedKeyIds } from '../src/data/keyboard.ts';
 import { clonePreset } from '../src/data/presetEditing.ts';
+import type { KeyboardPreset } from '../src/data/presets.ts';
 
 test('search finds commands regardless of case, word order, or extra whitespace', () => {
   assert.deepEqual([...findMatchingKeys(defaultPresets[0], '  CAMERA   rotate ')], ['2-11', '2-12', '5-3']);
@@ -145,5 +146,36 @@ test('chord literal matching uses actions without bypassing bindings through met
   assert.deepEqual([...findMatchingKeys(preset, 'Ctrl+A select')], ['0-2', '0-4', '0-5']);
   for (const query of ['Ctrl+A battle', 'Ctrl+A army']) {
     assert.deepEqual(findCommandResults(preset, query).map((entry) => entry.ownerId), ['0-4']);
+  }
+});
+
+test('chord queries preserve complete multiword and generated key labels', () => {
+  for (const labels of [
+    ['Push To Talk'],
+    ['Caps Lock', 'Caps Lock'],
+    ['Push To Talk', 'Push To Talk', 'Push To Talk'],
+  ]) {
+    const preset: KeyboardPreset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+      { label: 'Ctrl', hotkeys: [''], combinations: [{ keyId: '0-1', action: 'Activate voice' }] },
+      ...labels.map((label) => ({ label, hotkeys: [''] })),
+      { label: 'Push', hotkeys: [''] },
+      { label: 'Talk', hotkeys: [''] },
+    ]] };
+    const label = getKeyOptions(preset)[1].label;
+    for (const participant of new Set(labels.length > 2 ? [label] : [labels[0], label])) {
+      for (const chord of [`Ctrl+${participant}`, `${participant}+Ctrl`]) {
+        for (const query of [chord, `activate ${chord}`, `${chord} voice`, `activate ${chord} voice`]) {
+          const results = findCommandResults(preset, query);
+          assert.deepEqual(results.map((entry) => entry.action), ['Activate voice'], query);
+          assert.deepEqual([...findMatchingKeys(preset, query)], ['0-0', '0-1'], query);
+        }
+      }
+    }
+    if (labels.length === 2) {
+      assert.equal(findCommandResults(preset, 'Ctrl+Right Caps Lock').length, 0);
+    }
+    preset.rows[0][0].combinations = [{ keyId: '0-1', action: 'Activate voice', additionalKeyIds: ['0-2'] }];
+    assert.deepEqual(findCommandResults(preset, `Ctrl+${label}+${getKeyOptions(preset)[2].label} voice`)
+      .map((entry) => entry.action), ['Activate voice']);
   }
 });
