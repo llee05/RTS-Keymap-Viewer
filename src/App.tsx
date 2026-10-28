@@ -276,6 +276,7 @@ function App() {
           onExport={() => exportPreset()}
           onExportAll={(trigger) => exportPreset(true, trigger)}
           onDelete={(trigger) => { setDeleteError(''); setPendingDelete({ preset: visiblePreset, trigger }); }}
+          onPrint={() => window.print()}
         />
       )}
       {storageMode === 'unavailable' && <div className="recovery-banner">
