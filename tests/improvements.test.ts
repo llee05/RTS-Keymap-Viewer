@@ -21,7 +21,9 @@ test('shortcut notation identifies complete combinations and results represent c
   plus.rows[2][4].hotkeys = ['Build + Repair'];
   assert.equal(findCommandResults(plus, 'Build+Repair')[0].action, 'Build + Repair');
   assert.equal(findCommandResults(defaultPresets[0], '', 'Camera').some((entry) => entry.action === 'Pan camera up'), true);
-  assert.equal(getCommandEntries(defaultPresets[0]).filter((entry) => entry.combination && entry.keyIds.includes('5-0')).length, 4);
+  assert.equal(findCommandResults(defaultPresets[0], 'Ctrl+1')[0].action, 'Create control group 1');
+  assert.equal(findCommandResults(defaultPresets[0], 'Shift+1')[0].action, 'Add to control group 1');
+  assert.equal(getCommandEntries(defaultPresets[0]).filter((entry) => entry.combination && entry.keyIds.includes('5-0')).length, 14);
 });
 
 test('complete shortcut conflicts are detected across owners and require distinct contexts', () => {

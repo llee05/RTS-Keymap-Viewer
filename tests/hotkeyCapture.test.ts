@@ -66,11 +66,11 @@ test('recorded combinations retain every key and are searchable and highlighted 
 test('existing combinations are detected across owners and key order and updated without duplicates', () => {
   const saved = clonePreset(defaultPresets[0]);
   const before = structuredClone(saved);
-  const match = findRecordedCombination(saved, ['5-5', '1-1']);
-  assert.equal(match?.action, 'Ability panel 1');
-  const updated = assignRecordedHotkey(saved, ['5-5', '1-1'], 'Updated ability');
-  assert.equal(updated.rows[5][5].combinations![0].action, 'Updated ability');
-  assert.equal(updated.rows[1][1].combinations, undefined);
+  const match = findRecordedCombination(saved, ['5-0', '1-1']);
+  assert.equal(match?.action, 'Create control group 1');
+  const updated = assignRecordedHotkey(saved, ['5-0', '1-1'], 'Updated group');
+  assert.equal(updated.rows[1][1].combinations![0].action, 'Updated group');
+  assert.equal(updated.rows[5][0].combinations, undefined);
   assert.deepEqual(saved, before);
 });
 
