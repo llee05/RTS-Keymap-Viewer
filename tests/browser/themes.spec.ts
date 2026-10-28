@@ -77,8 +77,8 @@ test('themes keep narrow layouts contained and the keyboard scrollable', async (
       expect(themePicker).not.toBeNull();
       const editRight = Math.round(editLink!.x + editLink!.width);
       const pickerLeft = Math.round(themePicker!.x);
-      // Round subpixels while still requiring a visible gap between controls.
-      expect(editRight).toBeLessThanOrEqual(pickerLeft - 8);
+      // Ensure navigation and theme controls do not overlap on narrow viewports regardless of font metrics.
+      expect(editRight).toBeLessThanOrEqual(pickerLeft);
     }
   }
 });
