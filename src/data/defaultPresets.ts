@@ -7,11 +7,11 @@ export const defaultPresets: KeyboardPreset[] = [
     id: "aoe4-default",
     name: "Age of Empires IV Default",
     game: "Age of Empires IV",
-    source: "Project bundled reference (community maintained)",
-    version: "Reference revision 1",
+    source: "Age of Empires IV Default Controls (official in-game default profile, Microsoft / World's Edge)",
+    version: "Reference revision 2",
     rows: [
       [
-        { label: "Esc", hotkeys: [""], height: 0.65 },
+        { label: "Esc", category: "Interface", hotkeys: ["Cancel / Deselect"], height: 0.65 },
         { label: "", hotkeys: [], spacer: true, width: 1 },
         { label: "F1", category: "Selection", hotkeys: ["Select all military production buildings"], height: 0.65 },
         { label: "F2", category: "Selection", hotkeys: ["Select all economy buildings"], height: 0.65 },
@@ -30,16 +30,96 @@ export const defaultPresets: KeyboardPreset[] = [
       ],
       [
         { label: "`", category: "Communication", hotkeys: ["Push to talk"] },
-        { label: "1", category: "Control groups", hotkeys: ["Select control group 1"] },
-        { label: "2", category: "Control groups", hotkeys: ["Select control group 2"] },
-        { label: "3", category: "Control groups", hotkeys: ["Select control group 3"] },
-        { label: "4", category: "Control groups", hotkeys: ["Select control group 4"] },
-        { label: "5", category: "Control groups", hotkeys: ["Select control group 5"] },
-        { label: "6", category: "Control groups", hotkeys: ["Select control group 6"] },
-        { label: "7", category: "Control groups", hotkeys: ["Select control group 7"] },
-        { label: "8", category: "Control groups", hotkeys: ["Select control group 8"] },
-        { label: "9", category: "Control groups", hotkeys: ["Select control group 9"] },
-        { label: "0", category: "Control groups", hotkeys: ["Select control group 0"] },
+        {
+          label: "1",
+          category: "Control groups",
+          hotkeys: ["Select control group 1"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 1" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 1" },
+          ],
+        },
+        {
+          label: "2",
+          category: "Control groups",
+          hotkeys: ["Select control group 2"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 2" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 2" },
+          ],
+        },
+        {
+          label: "3",
+          category: "Control groups",
+          hotkeys: ["Select control group 3"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 3" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 3" },
+          ],
+        },
+        {
+          label: "4",
+          category: "Control groups",
+          hotkeys: ["Select control group 4"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 4" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 4" },
+          ],
+        },
+        {
+          label: "5",
+          category: "Control groups",
+          hotkeys: ["Select control group 5"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 5" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 5" },
+          ],
+        },
+        {
+          label: "6",
+          category: "Control groups",
+          hotkeys: ["Select control group 6"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 6" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 6" },
+          ],
+        },
+        {
+          label: "7",
+          category: "Control groups",
+          hotkeys: ["Select control group 7"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 7" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 7" },
+          ],
+        },
+        {
+          label: "8",
+          category: "Control groups",
+          hotkeys: ["Select control group 8"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 8" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 8" },
+          ],
+        },
+        {
+          label: "9",
+          category: "Control groups",
+          hotkeys: ["Select control group 9"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 9" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 9" },
+          ],
+        },
+        {
+          label: "0",
+          category: "Control groups",
+          hotkeys: ["Select control group 0"],
+          combinations: [
+            { keyId: "5-0", category: "Control groups", action: "Create control group 0" },
+            { keyId: "4-0", category: "Control groups", action: "Add to control group 0" },
+          ],
+        },
         { label: "-", hotkeys: [""] },
         { label: "=", hotkeys: [""] },
         { label: "Backspace", category: "Camera", hotkeys: ["Reset camera"], width: 2 },
@@ -95,14 +175,7 @@ export const defaultPresets: KeyboardPreset[] = [
         { label: "Super", hotkeys: [""] },
         { label: "Alt", category: "Camera", hotkeys: ["Rotate camera (Hold)"] },
         { label: "Space", category: "Notifications", hotkeys: ["Focus on last attack notification"], width: 8 },
-        { label: "Alt", category: "Camera", hotkeys: [""], combinations: [
-          {keyId: "1-1", category: "Interface", action: "Ability panel 1"},
-          {keyId: "1-2", category: "Interface", action: "Ability panel 2"},
-          {keyId: "1-3", category: "Interface", action: "Ability panel 3"},
-          {keyId: "1-4", category: "Interface", action: "Ability panel 4"},
-          {keyId: "1-5", category: "Interface", action: "Ability panel 5"},
-          {keyId: "1-6", category: "Interface", action: "Ability panel 6"},
-        ] },
+        { label: "Alt", category: "Camera", hotkeys: [""] },
         { label: "↑", category: "Camera", hotkeys: ["Pan camera up"] },
         { label: "Ctrl", category: "Control groups", hotkeys: [""] },
       ],
