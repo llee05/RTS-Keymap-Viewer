@@ -111,7 +111,7 @@ function parseChordQuery(preset: KeyboardPreset, normalized: string): { chord: s
   }
   for (const row of preset.rows) {
     for (const key of row) {
-      if (key.label) {
+      if (!key.spacer && key.label) {
         const norm = normalizeSearch(key.label);
         keyLabels.add(norm);
         keyLabels.add(norm.replace(/^(left|right) /, ''));

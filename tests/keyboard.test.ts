@@ -179,3 +179,17 @@ test('chord queries preserve complete multiword and generated key labels', () =>
       .map((entry) => entry.action), ['Activate voice']);
   }
 });
+
+test('spacer labels cannot consume free text at either chord boundary', () => {
+  const preset: KeyboardPreset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+    { label: 'Ctrl', hotkeys: [''], combinations: [{ keyId: '0-1', action: 'Select units' }] },
+    { label: 'A', hotkeys: [''] },
+    ...['A select', 'select A', 'Ctrl select', 'select Ctrl', 'Left A select', 'Right select Ctrl']
+      .map((label) => ({ label, hotkeys: [''], spacer: true })),
+  ]] };
+
+  for (const query of ['Ctrl+A select', 'select A+Ctrl', 'A+Ctrl select', 'select Ctrl+A']) {
+    assert.deepEqual(findCommandResults(preset, query).map((entry) => entry.action), ['Select units'], query);
+    assert.deepEqual([...findMatchingKeys(preset, query)], ['0-0', '0-1'], query);
+  }
+});
