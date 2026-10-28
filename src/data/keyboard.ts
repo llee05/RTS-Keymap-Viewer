@@ -171,7 +171,7 @@ export function findCommandResults(preset: KeyboardPreset, query: string, catego
     if (category && entry.category !== category) return false;
     if (parsedChord && parsedChord.chord.length > 1) {
       const compact = (text: string) => normalizeSearch(text).replace(/\s*\+\s*/g, '+');
-      if (compact(`${entry.action} ${entry.context} ${entry.category}`).includes(compact(query))) return true;
+      if (compact(entry.action).includes(compact(query))) return true;
       const parts = normalizeSearch(entry.shortcut).split(' + ');
       if (parts.length !== parsedChord.chord.length) return false;
       const requested = [...parsedChord.chord].sort();

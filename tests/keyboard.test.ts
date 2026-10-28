@@ -130,3 +130,20 @@ test('search supports chord and free-text queries together', () => {
   assert.equal(triple.length, 1);
   assert.equal(triple[0].action, 'Group select');
 });
+
+test('chord literal matching uses actions without bypassing bindings through metadata', () => {
+  const preset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+    { label: 'B', hotkeys: ['Other command'], context: 'Ctrl+A select' },
+    { label: 'C', hotkeys: ['Other command'], category: 'Ctrl+A select' },
+    { label: 'D', hotkeys: ['Ctrl + A select'] },
+    { label: 'E', hotkeys: ['Ctrl+A'], context: 'select' },
+    { label: 'A', hotkeys: [''], combinations: [{ keyId: '0-5', action: 'Select units', context: 'Battle', category: 'Army' }] },
+    { label: 'Ctrl', hotkeys: [''] },
+  ]] };
+
+  assert.deepEqual(findCommandResults(preset, 'Ctrl+A select').map((entry) => entry.ownerId), ['0-2', '0-4']);
+  assert.deepEqual([...findMatchingKeys(preset, 'Ctrl+A select')], ['0-2', '0-4', '0-5']);
+  for (const query of ['Ctrl+A battle', 'Ctrl+A army']) {
+    assert.deepEqual(findCommandResults(preset, query).map((entry) => entry.ownerId), ['0-4']);
+  }
+});
