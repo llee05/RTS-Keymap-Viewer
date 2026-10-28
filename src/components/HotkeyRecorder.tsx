@@ -23,6 +23,7 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   const held = useRef(new Set<string>());
   const captured = useRef<string[]>([]);
   const released = useRef(false);
+  const hadModifier = useRef(false);
   const captureError = useRef('');
   const commandId = useId();
   const commandHelpId = useId();
@@ -34,6 +35,7 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
 
   const stopOnBlur = useCallback(() => {
     held.current.clear();
+    hadModifier.current = false;
     setRecording(false);
     setKeyIds([]);
     setError('Recording stopped. Select Record hotkey to try again.');
@@ -51,21 +53,38 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   }, [recording, stopOnBlur]);
 
   function toggleRecording() {
-    held.current.clear();
-    captured.current = [];
-    released.current = false;
-    captureError.current = '';
-    setKeyIds([]);
-    setError('');
-    setRecording((current) => !current);
+    if (recording) {
+      released.current = false;
+      hadModifier.current = false;
+      if (captureError.current) {
+        setKeyIds([]);
+        setError(captureError.current);
+      } else {
+        setKeyIds([...captured.current]);
+        setError('');
+      }
+      setRecording(false);
+    } else {
+      held.current.clear();
+      captured.current = [];
+      released.current = false;
+      hadModifier.current = false;
+      captureError.current = '';
+      setKeyIds([]);
+      setError('');
+      setRecording(true);
+    }
   }
 
   function recordDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!recording) return;
+    if (!recording && !(event.repeat && held.current.has(event.code))) return;
     event.preventDefault();
     event.stopPropagation();
     if (event.repeat || held.current.has(event.code)) return;
     held.current.add(event.code);
+    if (/^(Control|Shift|Alt|Meta|OS)/.test(event.code) || /^(Control|Shift|Alt|Meta)/.test(event.key)) {
+      hadModifier.current = true;
+    }
     const key = event.nativeEvent.isComposing ? undefined : getKeyForCode(preset, event.code);
     const missingModifier = ([['Control', event.ctrlKey], ['Shift', event.shiftKey], ['Alt', event.altKey], ['Meta', event.metaKey]] as const)
       .some(([code, active]) => active && ![...held.current].some((heldCode) => heldCode.startsWith(code)));
@@ -81,12 +100,19 @@ export function HotkeyRecorder({ preset, trigger, onClose, onAdd }: Props) {
   }
 
   function recordUp(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!recording) return;
+    if (!recording && !held.current.has(event.code)) return;
     event.preventDefault();
     event.stopPropagation();
     if (!held.current.delete(event.code)) return;
+    if (!recording) return;
     released.current = true;
-    if (!held.current.size) setRecording(false);
+    const isModifierCode = (code: string) => /^(Control|Shift|Alt|Meta|OS)/.test(code);
+    const metaReleased = /^(Meta|OS)/.test(event.code) || event.key === 'Meta';
+    const modifiersHeld = [...held.current].some(isModifierCode);
+    if (!held.current.size || metaReleased || (hadModifier.current && !modifiersHeld)) {
+      hadModifier.current = false;
+      setRecording(false);
+    }
   }
 
   return (

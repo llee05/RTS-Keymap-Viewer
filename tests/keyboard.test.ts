@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { defaultPresets } from '../src/data/defaultPresets.ts';
-import { findMatchingKeys, getKeyOptions, getRelatedKeyIds } from '../src/data/keyboard.ts';
+import { findCommandResults, findMatchingKeys, getKeyOptions, getRelatedKeyIds } from '../src/data/keyboard.ts';
 import { clonePreset } from '../src/data/presetEditing.ts';
+import type { KeyboardPreset } from '../src/data/presets.ts';
 
 test('search finds commands regardless of case, word order, or extra whitespace', () => {
   assert.deepEqual([...findMatchingKeys(defaultPresets[0], '  CAMERA   rotate ')], ['2-11', '2-12', '5-3']);
@@ -99,4 +100,96 @@ test('searching invalid legacy combinations never returns nonexistent or spacer 
   const before = structuredClone(preset);
   assert.deepEqual([...findMatchingKeys(preset, 'Legacy action')], ['0-0', '0-2']);
   assert.deepEqual(preset, before);
+});
+
+test('search supports chord and free-text queries together', () => {
+  const results1 = findCommandResults(defaultPresets[0], 'Ctrl+A select');
+  assert.equal(results1.length, 1);
+  assert.equal(results1[0].action, 'Select all units on screen');
+  assert.deepEqual(results1[0].keyIds, ['3-1', '5-0']);
+
+  const results2 = findCommandResults(defaultPresets[0], 'select all Ctrl+A');
+  assert.equal(results2.length, 1);
+  assert.equal(results2[0].action, 'Select all units on screen');
+
+  const results3 = findCommandResults(defaultPresets[0], 'Ctrl+A units');
+  assert.equal(results3.length, 1);
+  assert.equal(results3[0].action, 'Select all units on screen');
+
+  assert.equal(findCommandResults(defaultPresets[0], 'Ctrl+A non-existent').length, 0);
+  assert.equal(findCommandResults(defaultPresets[0], 'Right Ctrl+A select').length, 0);
+
+  const matchedKeys = findMatchingKeys(defaultPresets[0], 'Ctrl+A select');
+  assert.deepEqual([...matchedKeys].sort(), ['3-1', '5-0']);
+
+  const preset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+    { label: 'A', hotkeys: [''], combinations: [{ keyId: '0-1', additionalKeyIds: ['0-2'], action: 'Group select', category: 'Units' }] },
+    { label: 'Ctrl', hotkeys: [''] },
+    { label: 'Shift', hotkeys: [''] },
+  ]] };
+  const triple = findCommandResults(preset, 'Ctrl + Shift + A group');
+  assert.equal(triple.length, 1);
+  assert.equal(triple[0].action, 'Group select');
+});
+
+test('chord literal matching uses actions without bypassing bindings through metadata', () => {
+  const preset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+    { label: 'B', hotkeys: ['Other command'], context: 'Ctrl+A select' },
+    { label: 'C', hotkeys: ['Other command'], category: 'Ctrl+A select' },
+    { label: 'D', hotkeys: ['Ctrl + A select'] },
+    { label: 'E', hotkeys: ['Ctrl+A'], context: 'select' },
+    { label: 'A', hotkeys: [''], combinations: [{ keyId: '0-5', action: 'Select units', context: 'Battle', category: 'Army' }] },
+    { label: 'Ctrl', hotkeys: [''] },
+  ]] };
+
+  assert.deepEqual(findCommandResults(preset, 'Ctrl+A select').map((entry) => entry.ownerId), ['0-2', '0-4']);
+  assert.deepEqual([...findMatchingKeys(preset, 'Ctrl+A select')], ['0-2', '0-4', '0-5']);
+  for (const query of ['Ctrl+A battle', 'Ctrl+A army']) {
+    assert.deepEqual(findCommandResults(preset, query).map((entry) => entry.ownerId), ['0-4']);
+  }
+});
+
+test('chord queries preserve complete multiword and generated key labels', () => {
+  for (const labels of [
+    ['Push To Talk'],
+    ['Caps Lock', 'Caps Lock'],
+    ['Push To Talk', 'Push To Talk', 'Push To Talk'],
+  ]) {
+    const preset: KeyboardPreset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+      { label: 'Ctrl', hotkeys: [''], combinations: [{ keyId: '0-1', action: 'Activate voice' }] },
+      ...labels.map((label) => ({ label, hotkeys: [''] })),
+      { label: 'Push', hotkeys: [''] },
+      { label: 'Talk', hotkeys: [''] },
+    ]] };
+    const label = getKeyOptions(preset)[1].label;
+    for (const participant of new Set(labels.length > 2 ? [label] : [labels[0], label])) {
+      for (const chord of [`Ctrl+${participant}`, `${participant}+Ctrl`]) {
+        for (const query of [chord, `activate ${chord}`, `${chord} voice`, `activate ${chord} voice`]) {
+          const results = findCommandResults(preset, query);
+          assert.deepEqual(results.map((entry) => entry.action), ['Activate voice'], query);
+          assert.deepEqual([...findMatchingKeys(preset, query)], ['0-0', '0-1'], query);
+        }
+      }
+    }
+    if (labels.length === 2) {
+      assert.equal(findCommandResults(preset, 'Ctrl+Right Caps Lock').length, 0);
+    }
+    preset.rows[0][0].combinations = [{ keyId: '0-1', action: 'Activate voice', additionalKeyIds: ['0-2'] }];
+    assert.deepEqual(findCommandResults(preset, `Ctrl+${label}+${getKeyOptions(preset)[2].label} voice`)
+      .map((entry) => entry.action), ['Activate voice']);
+  }
+});
+
+test('spacer labels cannot consume free text at either chord boundary', () => {
+  const preset: KeyboardPreset = { id: 'custom', name: 'Test', game: 'Test', rows: [[
+    { label: 'Ctrl', hotkeys: [''], combinations: [{ keyId: '0-1', action: 'Select units' }] },
+    { label: 'A', hotkeys: [''] },
+    ...['A select', 'select A', 'Ctrl select', 'select Ctrl', 'Left A select', 'Right select Ctrl']
+      .map((label) => ({ label, hotkeys: [''], spacer: true })),
+  ]] };
+
+  for (const query of ['Ctrl+A select', 'select A+Ctrl', 'A+Ctrl select', 'select Ctrl+A']) {
+    assert.deepEqual(findCommandResults(preset, query).map((entry) => entry.action), ['Select units'], query);
+    assert.deepEqual([...findMatchingKeys(preset, query)], ['0-0', '0-1'], query);
+  }
 });

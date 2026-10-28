@@ -273,6 +273,77 @@ test('unsupported keys clear the recording, conflicts require replacement, and d
   expect(saved.rows[3][1].combinations).toEqual([{ ...before.rows[3][1].combinations![0], action: 'Updated selection' }]);
 });
 
+test('completes recording when modifier keys are released without trailing keyup and retains keys on stop recording', async ({ page }) => {
+  await makeCustom(page);
+  await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
+  await dialog.getByLabel('Command', { exact: true }).fill('Mac command test');
+
+  const recordButton = dialog.getByRole('button', { name: 'Record hotkey', exact: true });
+  await recordButton.click();
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+
+  // Simulate macOS Meta shortcut where keyup for the character key is swallowed by the OS
+  await page.keyboard.down('MetaLeft');
+  await page.keyboard.down('KeyA');
+  await page.keyboard.up('MetaLeft');
+
+  await expect(dialog.getByRole('button', { name: 'Record hotkey', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Super');
+  await expect(dialog.getByRole('status')).toContainText('A');
+  await page.keyboard.up('KeyA');
+
+  // Retain captured keys when Stop recording is clicked manually
+  await recordButton.click();
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+  await page.keyboard.down('ControlLeft');
+  await page.keyboard.down('KeyB');
+  await dialog.getByRole('button', { name: 'Stop recording', exact: true }).click();
+
+  await expect(dialog.getByRole('button', { name: 'Record hotkey', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Ctrl');
+  await expect(dialog.getByRole('status')).toContainText('B');
+  await expect(dialog.getByRole('button', { name: 'Add hotkey', exact: true })).toBeEnabled();
+  await page.keyboard.up('ControlLeft');
+  await page.keyboard.up('KeyB');
+});
+
+test('completed recordings suppress held navigation key repeats and trailing releases', async ({ page }) => {
+  await makeCustom(page);
+  await page.getByRole('button', { name: 'Add hotkey', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add hotkey', exact: true });
+  await dialog.getByLabel('Command', { exact: true }).fill('Navigation chord');
+  const recordButton = dialog.getByRole('button', { name: 'Record hotkey', exact: true });
+
+  for (const completion of ['modifier release', 'manual stop']) {
+    for (const code of ['Enter', 'Tab', 'Space']) {
+      await recordButton.click();
+      await page.keyboard.down('ShiftLeft');
+      await page.keyboard.down(code);
+      if (completion === 'modifier release') {
+        await page.keyboard.up('ShiftLeft');
+      } else {
+        await dialog.getByRole('button', { name: 'Stop recording', exact: true }).click();
+      }
+      await expect(recordButton).toBeVisible();
+      const captured = await dialog.getByRole('status').locator('kbd').allTextContents();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveCount(2);
+      await page.keyboard.down(code);
+      await expect(recordButton).toBeFocused();
+      await expect(recordButton).toBeVisible();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveText(captured);
+      await page.keyboard.up(code);
+      if (completion === 'manual stop') await page.keyboard.up('ShiftLeft');
+      await expect(recordButton).toBeFocused();
+      await expect(recordButton).toBeVisible();
+      await expect(dialog.getByRole('status').locator('kbd')).toHaveText(captured);
+    }
+  }
+
+  await page.keyboard.press('Enter');
+  await expect(dialog.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+});
+
 test('export and import round trip the layout with a fresh custom ID', async ({ page }) => {
   const id = await makeCustom(page, 'Backup preset');
   const original = (await storedPresets(page)).find((preset) => preset.id === id)!;
