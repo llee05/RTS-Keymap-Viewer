@@ -18,7 +18,7 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 - Accessible key editor dialogs with keyboard focus containment, Escape dismissal, and focus restoration.
 - Browser-local persistence through IndexedDB.
 - Three remembered dark colour themes: **Midnight**, **Forest**, and **Ember**, with responsive controls and a horizontally scrollable keyboard on smaller screens.
-- Printable cheat sheet with a **Print reference** button, rendering the visual keyboard with inline commands and a full command list grouped by category in high-contrast black and white.
+- Printable cheat sheet through **Print reference**; see [Using the viewer](#using-the-viewer).
 
 Editing a preset changes the reference board. Configure the actual game bindings separately in the game.
 
@@ -27,12 +27,14 @@ Editing a preset changes the reference board. Configure the actual game bindings
 1. Choose **Active layout**, then hover, tap, or focus a key to inspect its commands. Use **Search commands or keys** to find a command or shortcut.
 2. To customize existing assignments, open **Edit → Clone preset**. To start with an empty keyboard of the same shape, select **New preset** on View.
 3. Name the draft, add commands with **Add hotkey** or select individual keys to edit, then select **Save preset**.
-4. Select **Print reference** on View or **Edit → More preset actions → Print reference** to print a cheat sheet with inline key commands and a categorized list.
+4. Print a cheat sheet as described in [Using the viewer](#using-the-viewer).
 5. Use **Edit → More preset actions → Export preset** to download a backup. Saved layouts stay in this browser; import the JSON backup to move them elsewhere.
 
 ## Using the viewer
 
-The app opens in **View**, with layout selection, search, a **Print reference** button, a **New preset** button, and a reference keyboard. **Print reference** generates a high-contrast black-and-white cheat sheet displaying the keyboard layout with commands inline, plus a full command list organized by category. **New preset** opens a blank custom draft in **Edit**, preserving the selected layout's physical keyboard shape. It is disabled while a draft or recovery is pending or local storage is unavailable. The **View** and **Edit** text links switch screens; `#edit` can also be bookmarked. Other preset actions, backup management, recovery actions, and storage retry are available on **Edit**. Returning to View shows the saved layout and retains any open draft for when you return to Edit. Layout selection stays locked while a draft is open.
+The app opens in **View**, with layout selection, search, a **Print reference** button, a **New preset** button, and a reference keyboard. **New preset** opens a blank custom draft in **Edit**, preserving the selected layout's physical keyboard shape. It is disabled while a draft or recovery is pending or local storage is unavailable. The **View** and **Edit** text links switch screens; `#edit` can also be bookmarked. Other preset actions, backup management, recovery actions, and storage retry are available on **Edit**. Returning to View shows the saved layout and retains any open draft for when you return to Edit. Layout selection stays locked while a draft is open.
+
+Select **Print reference** on View to open the browser’s print dialog. On Edit, the button is under **More preset actions** when no draft is open. The black-and-white cheat sheet includes the whole keyboard with the first single-key command inline on each assigned key; long inline text may be truncated. The full command list below is grouped by category and includes combinations and contexts, regardless of the current search or category filter. View prints the saved layout even when a draft is retained. The print stylesheet also applies when using the browser’s print command; on Edit, it prints the current draft if one is open.
 
 1. Choose **Active layout**. Hover, tap, or focus a key to see its commands and every combination that uses it. Press Escape to dismiss the tooltip. Scrolling the page or keyboard, or resizing the window, also dismisses it. Use arrow keys to move between nearby keys, skipping spacers; Home and End go to the first and last key in the row. Tab navigation remains available.
 2. Open **Edit**, then select **Add hotkey** and enter a **Command**. Either select **Record hotkey**, hold the keys together and release all keys, or expand **Choose keys on screen** and select every participating key. The on-screen picker works with touch and keyboard navigation. Select **Add hotkey** to add the command; optional category and context fields are collapsed under **Advanced options**. An existing combination in the same context offers **Replace hotkey**. Single-key commands are appended; their category and context describe all commands on that key.
@@ -162,7 +164,7 @@ For documentation-only changes, check the documented commands, paths, and behavi
 
 To add a bundled layout, add a `KeyboardPreset` to `defaultPresets`. Keys are arranged in rows; combination targets use zero-based `rowIndex-keyIndex` positions, including spacer entries. `KeyCombination.keyId` identifies the first target, and optional `additionalKeyIds` stores the remaining targets for combinations with three or more keys. Existing two-key presets and version 1 backups remain compatible. Keep those references in sync when changing a layout. See [AGENTS.md](AGENTS.md) for contributor guidance.
 
-Key widths use keyboard units: a standard key is 64px wide with a 10px gutter, and wider keys include the gutters they span (a 2-unit key is 138px wide). Spacers follow the same width rule and never shrink. Heights scale from 64px (`(height ?? 1) * 64px`). Existing custom presets keep their stored dimensions and assignments; their rendered widths use the same spacing rule.
+On screen, key widths use keyboard units: a standard key is 64px wide with a 10px gutter, and wider keys include the gutters they span (a 2-unit key is 138px wide). Spacers follow the same width rule and never shrink. Heights scale from 64px (`(height ?? 1) * 64px`). Existing custom presets keep their stored dimensions and assignments; their rendered widths use the same spacing rule.
 
 ## Deployment
 
