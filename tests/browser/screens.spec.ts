@@ -3,9 +3,10 @@ import { cancelDraft, enterEditor, installBrowserChecks, key, openKey, status, s
 
 installBrowserChecks(false);
 
-test('the main screen exposes viewing controls and a new preset button', async ({ page }) => {
+test('the main screen exposes viewing controls and preset actions', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'View', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('button:not(.key)')).toHaveCount(1);
+  await expect(page.locator('button:not(.key)')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Print reference', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'New preset', exact: true })).toBeEnabled();
   await expect(page.locator('.preset-management')).toHaveCount(0);
   await expect(page.getByLabel('Active layout')).toBeEnabled();
@@ -18,7 +19,7 @@ test('the main screen exposes viewing controls and a new preset button', async (
   await expect(result).toContainText('Select all units on screen');
   await result.click();
   await expect(key(page, '3-1')).toBeFocused();
-  await expect(page.locator('button:not(.key)')).toHaveCount(1);
+  await expect(page.locator('button:not(.key)')).toHaveCount(2);
   await page.getByLabel('Search commands or keys').focus();
   await page.keyboard.press('Enter');
   await expect(key(page, '3-1')).toBeFocused();
@@ -69,7 +70,7 @@ test('edit actions are isolated and switching to View retains the draft without 
   await page.getByRole('textbox', { name: 'Commands for Q alone' }).fill('Editor draft command');
   await page.getByRole('button', { name: 'Close editor' }).click();
   await page.getByRole('link', { name: 'View', exact: true }).click();
-  await expect(page.locator('button:not(.key)')).toHaveCount(1);
+  await expect(page.locator('button:not(.key)')).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'New preset', exact: true })).toBeDisabled();
   await expect(page.getByLabel('Active layout')).toBeDisabled();
   await key(page, '2-1').focus();
@@ -100,7 +101,7 @@ test('recovery and storage failure disable new preset creation on View', async (
   await page.reload();
   await expect(status(page)).toHaveText('Could not open local database');
   await expect(page.getByRole('region', { name: 'Recovered draft' })).toContainText('Recovery test');
-  await expect(page.locator('button:not(.key)')).toHaveCount(1);
+  await expect(page.locator('button:not(.key)')).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'New preset', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Retry storage' })).toHaveCount(0);
   await enterEditor(page);
@@ -115,7 +116,7 @@ test('browser back closes editor dialogs and returns to the viewing screen', asy
   await page.getByRole('dialog').getByLabel('Command', { exact: true }).fill('Unsubmitted command');
   await page.goBack();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('button:not(.key)')).toHaveCount(1);
+  await expect(page.locator('button:not(.key)')).toHaveCount(2);
   await enterEditor(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });

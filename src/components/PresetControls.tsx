@@ -11,10 +11,10 @@ type Props = {
   onSave: (asCustom?: boolean) => void; onUndo: () => void; onRedo: () => void;
   onFieldChange: (field: 'name' | 'game' | 'source' | 'version', value: string) => void;
   onImport: (file: File) => void; onExport: () => void; onExportAll: (trigger: HTMLButtonElement) => void;
-  onDelete: (trigger: HTMLButtonElement) => void;
+  onDelete: (trigger: HTMLButtonElement) => void; onPrint: () => void;
 };
 
-export function PresetControls({ presets, preset, editor, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete }: Props) {
+export function PresetControls({ presets, preset, editor, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete, onPrint }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const editingBlocked = busy || !storageAvailable || recoveryPending;
   const invalidName = !preset.name.trim();
@@ -34,6 +34,7 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
           <span className="game-badge">{preset.game}</span>
         </div>
         {!editor && <div className="mode-controls" aria-label="Preset actions">
+          <button type="button" className="secondary-button" disabled={busy} onClick={onPrint}>Print reference</button>
           <button type="button" disabled={editingBlocked || editing} onClick={onBlank}>New preset</button>
         </div>}
         {editor && <div className="mode-controls" aria-label="Preset actions">
@@ -69,6 +70,7 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
         <summary>More preset actions</summary>
         <div className="preset-library mode-controls" aria-label="Preset backup and management">
           <button type="button" className="secondary-button" disabled={editingBlocked} onClick={onBlank}>Blank preset</button>
+          <button type="button" className="secondary-button" disabled={busy} onClick={onPrint}>Print reference</button>
           <button type="button" className="secondary-button" disabled={busy} onClick={onExport}>Export preset</button>
           <button type="button" className="secondary-button" disabled={busy} onClick={(event) => onExportAll(event.currentTarget)}>Export all presets</button>
           <button type="button" className="secondary-button" disabled={editingBlocked} onClick={() => fileInput.current?.click()}>Import presets</button>
