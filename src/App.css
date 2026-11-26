@@ -437,6 +437,8 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
   .preset-notice { padding: 0 12px 8px; font-size: 0.72rem; }
   .preset-management { padding: 0 12px 8px; }
   .preset-management summary { padding: 3px 0; }
+  .share-controls { margin-bottom: 0; }
+  .share-controls summary { padding: 3px 0; }
   .status-row { margin-bottom: 10px; }
   .command-search { margin-bottom: 14px; padding: 12px; }
   .search-controls { gap: 6px; }
