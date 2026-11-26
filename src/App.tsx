@@ -7,6 +7,8 @@ import { clonePreset, createCustomPreset, createBlankPreset, normalizePreset, up
 import { getKeyId, getKeyOptions } from './data/keyboard';
 import { assignRecordedHotkey } from './data/hotkeyCapture';
 import { MAX_IMPORT_BYTES, parsePresetImport, createPresetBackups } from './data/presetTransfer';
+import { createShareUrl, decodeShareHash } from './data/presetShare';
+import { ShareControls } from './components/ShareControls';
 import { PresetControls } from './components/PresetControls';
 import { Keyboard } from './components/Keyboard';
 import { KeyEditor } from './components/KeyEditor';
@@ -18,11 +20,13 @@ import { readActivePreset, rememberActivePreset, readRecoveredDraft, rememberDra
 
 type EditingKey = KeyPosition & { trigger: HTMLButtonElement };
 type PendingDelete = { preset: KeyboardPreset; trigger: HTMLButtonElement };
-type Operation = 'save' | 'import' | 'delete' | null;
+type Operation = 'save' | 'import' | 'delete' | 'share' | null;
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'local database unavailable';
 const isBundled = (id: string) => defaultPresets.some((preset) => preset.id === id);
 
 function App() {
+  const [shared, setShared] = useState<{ hash: string; preset?: KeyboardPreset; error?: string } | null>(null);
+  const [copyLink, setCopyLink] = useState<{ url: string; trigger: HTMLElement } | null>(null);
   const [editor, setEditor] = useState(() => window.location.hash === '#edit');
   const [presets, setPresets] = useState<KeyboardPreset[]>(defaultPresets);
   const [activePresetId, setActivePresetId] = useState(() => readActivePreset() ?? 'aoe4-default');
@@ -43,7 +47,7 @@ function App() {
   const operationInProgress = useRef(false);
   const picker = useRef<HTMLSelectElement>(null);
   const activePreset = presets.find((preset) => preset.id === activePresetId) ?? presets[0];
-  const visiblePreset = editor ? draft ?? activePreset : activePreset;
+  const visiblePreset = editor ? draft ?? activePreset : shared?.preset ?? activePreset;
   const editing = editor && !!draft;
   const busy = operation !== null;
   const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(activePreset);
@@ -52,16 +56,39 @@ function App() {
   const selectedId = editingKey ? getKeyId(editingKey.rowIndex, editingKey.keyIndex) : '';
 
   useEffect(() => {
+    let controller: AbortController | undefined;
+    let disposed = false;
     const navigate = () => {
-      setEditor(window.location.hash === '#edit');
+      if (disposed) return;
+      controller?.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      const hash = window.location.hash;
+      setEditor(hash === '#edit');
       setEditingKey(null);
       setHotkeyTrigger(null);
       setPendingDiscard(null);
       setPendingDelete(null);
       setBackupParts(null);
+      setCopyLink(null);
+      setShared(null);
+      if (!hash.startsWith('#share')) return;
+      setShared({ hash });
+      decodeShareHash(hash, signal).then((preset) => {
+        if (!signal.aborted && window.location.hash === hash) {
+          setShared({ hash, preset });
+          setQuery('');
+          setStatus('Shared layout ready to view. Save to library to keep a custom copy.');
+        }
+      }).catch((error: unknown) => {
+        if (!signal.aborted && window.location.hash === hash) {
+          setShared({ hash, error: `Could not open shared layout: ${errorMessage(error)}` });
+        }
+      });
     };
     window.addEventListener('hashchange', navigate);
-    return () => window.removeEventListener('hashchange', navigate);
+    void Promise.resolve().then(navigate);
+    return () => { disposed = true; controller?.abort(); window.removeEventListener('hashchange', navigate); };
   }, []);
 
   useEffect(() => {
@@ -187,6 +214,46 @@ function App() {
     }
   }
 
+  function exitShared() {
+    setShared(null);
+    window.location.hash = '#view';
+  }
+
+  async function saveShared() {
+    if (!shared?.preset || draft || recovery || storageMode !== 'ready' || !beginOperation('import', 'Saving shared layout...')) return;
+    const hash = shared.hash;
+    try {
+      const saved = createCustomPreset(shared.preset, shared.preset.name);
+      await savePreset(saved);
+      setPresets((current) => [...current, saved]);
+      setActivePresetId(saved.id);
+      if (window.location.hash === hash) exitShared();
+      setStatus('Saved shared layout to local library as a new custom preset');
+      focusPicker();
+    } catch (error) {
+      setStatus(`Could not save shared layout: ${errorMessage(error)}`);
+    } finally { finishOperation(); }
+  }
+
+  async function copyShareLink(trigger: HTMLButtonElement) {
+    if (!visiblePreset || getPresetValidationErrors(visiblePreset).length || !beginOperation('share', 'Creating share link...')) return;
+    const hash = window.location.hash;
+    try {
+      const url = await createShareUrl(visiblePreset, window.location.href);
+      if (window.location.hash !== hash) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        setStatus('Share link copied to clipboard');
+      } catch {
+        if (window.location.hash !== hash) return;
+        setCopyLink({ url, trigger });
+        setStatus('Clipboard unavailable. Copy the share link from the dialog.');
+      }
+    } catch (error) {
+      setStatus(`Could not create share link: ${errorMessage(error)}`);
+    } finally { finishOperation(); }
+  }
+
   function downloadBackup(backup: string, name: string) {
     const blob = new Blob([backup], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -200,13 +267,13 @@ function App() {
   function exportPreset(all = false, trigger?: HTMLElement) {
     if (!activePreset || operationInProgress.current) return;
     try {
-      const backups = createPresetBackups(all ? presets : [activePreset]);
+      const backups = createPresetBackups(all ? presets : [shared?.preset ?? activePreset]);
       if (backups.length > 1 && trigger) {
         setBackupParts({ parts: backups, trigger });
         setStatus('Library backup is ready in multiple parts');
         return;
       }
-      const name = activePreset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'preset';
+      const name = (shared?.preset ?? activePreset).name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'preset';
       downloadBackup(backups[0], all ? 'rts-keymap-all-presets.json' : `rts-keymap-${name}.json`);
       setStatus(all ? `Exported all ${presets.length} presets as JSON` : 'Exported preset as JSON');
     } catch (error) {
@@ -256,6 +323,7 @@ function App() {
           busy={busy || storageMode === 'loading'}
           storageAvailable={storageMode === 'ready'}
           recoveryPending={!!recovery}
+          sharedPreview={!!shared?.preset}
           dirty={dirty}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -264,7 +332,7 @@ function App() {
           saving={operation === 'save'}
           validationErrors={getPresetValidationErrors(visiblePreset)}
           pickerRef={picker}
-          onSelect={(id) => { if (!operationInProgress.current) setActivePresetId(id); }}
+          onSelect={(id) => { if (!operationInProgress.current) { setActivePresetId(id); if (shared) exitShared(); } }}
           onNew={() => startEditing('clone')}
           onBlank={() => startEditing('blank')}
           onEdit={() => startEditing()}
@@ -279,6 +347,19 @@ function App() {
           onPrint={() => window.print()}
         />
       )}
+      {!editor && visiblePreset && <ShareControls disabled={busy || (!!shared && !shared.preset) || !!getPresetValidationErrors(visiblePreset).length} onCopy={copyShareLink} onExport={() => exportPreset()} />}
+      {shared && <section className="recovery-banner shared-banner" aria-label="Import shared layout" aria-busy={!shared.preset && !shared.error}>
+        <div>
+          <h2>Import shared layout</h2>
+          {shared.preset ? <p>Shared layout: <strong>{shared.preset.name}</strong> ({shared.preset.game}). Preview only until saved.</p>
+            : <p>{shared.error ? 'This shared link could not be opened. Your saved layout is shown below.' : 'Opening shared layout...'}</p>}
+          {shared.preset && (draft || recovery || storageMode !== 'ready') && <p id="shared-save-note">{draft || recovery ? 'Finish or discard your unsaved draft or recovery in Edit before saving this shared layout.' : storageMode === 'loading' ? 'Wait for local storage to finish loading before saving.' : 'Saving is unavailable. Open Edit → Retry storage, then reopen this link.'}</p>}
+        </div>
+        <div className="mode-controls">
+          {shared.preset && <button type="button" disabled={busy || !!draft || !!recovery || storageMode !== 'ready'} aria-describedby={draft || recovery || storageMode !== 'ready' ? 'shared-save-note' : undefined} onClick={saveShared}>Save to library</button>}
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => { exitShared(); setStatus('Shared layout dismissed'); focusPicker(); }}>Dismiss</button>
+        </div>
+      </section>}
       {storageMode === 'unavailable' && <div className="recovery-banner">
         <p>You can view the bundled layout. Open Edit to retry storage or export. Saving is unavailable until storage reconnects.</p>
         {editor && <button type="button" className="secondary-button" onClick={() => { setStorageMode('loading'); setStatus('Loading local database...'); setLoadAttempt((attempt) => attempt + 1); }}>Retry storage</button>}
@@ -295,16 +376,21 @@ function App() {
       </div>}
       {editor && draft && !recoveryAvailable && <p className="dialog-error" role="alert">Draft recovery is unavailable. Save your preset before closing this page.</p>}
       <div className="status-row">
-        <p className={`database-status ${status.startsWith('Could not') ? 'status-error' : ''}`} aria-live="polite"><span aria-hidden="true" />{status}</p>
+        <p className={`database-status ${(shared?.error ?? status).startsWith('Could not') ? 'status-error' : ''}`} aria-live="polite"><span aria-hidden="true" />{shared?.error ?? status}</p>
         <p className="interaction-hint">{editing ? 'Use Add hotkey to record a binding, or select a key to edit' : 'Hover, tap, or focus a key to view its commands'}</p>
       </div>
-      {visiblePreset && <Keyboard key={`${visiblePreset.id}-${editing}`} preset={visiblePreset} editor={editor} editing={editing} busy={busy} selected={editing ? editingKey : null} query={query} onQueryChange={setQuery} onEditKey={(position, trigger) => { if (!operationInProgress.current) setEditingKey({ ...position, trigger }); }} />}
+      {visiblePreset && <Keyboard key={shared?.preset ? shared.hash : `${visiblePreset.id}-${editing}`} preset={visiblePreset} editor={editor} editing={editing} busy={busy} selected={editing ? editingKey : null} query={query} onQueryChange={setQuery} onEditKey={(position, trigger) => { if (!operationInProgress.current) setEditingKey({ ...position, trigger }); }} />}
       {editor && editingKey && selectedKeybind && (
         <KeyEditor preset={draft!} key={selectedId} keybind={selectedKeybind} keyId={selectedId} label={options.find((option) => option.id === selectedId)?.label ?? selectedKeybind.label} options={options} busy={busy} trigger={editingKey.trigger} onClose={() => { if (!operationInProgress.current) setEditingKey(null); }} onChange={changeKey} />
       )}
       {editor && hotkeyTrigger && visiblePreset && (
         <HotkeyRecorder preset={visiblePreset} trigger={hotkeyTrigger} onClose={() => setHotkeyTrigger(null)} onAdd={addHotkey} />
       )}
+      {copyLink && <Dialog title="Copy share link" className="share-dialog" returnFocusTo={copyLink.trigger} onClose={() => setCopyLink(null)} closeLabel="Close" initialFocus="input">
+        <p>Copy this link to share the saved layout. Anyone with the link can view its contents.</p>
+        <label htmlFor="share-url">Share link</label>
+        <input id="share-url" type="text" readOnly value={copyLink.url} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.select()} />
+      </Dialog>}
       {backupParts && <Dialog title="Download backup parts" returnFocusTo={backupParts.trigger} onClose={() => setBackupParts(null)} closeLabel="Close">
         <p>Your library is split into {backupParts.parts.length} parts so each file can be imported. Download every part, then import each file to restore the full library.</p>
         <div className="mode-controls">

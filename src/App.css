@@ -387,6 +387,15 @@ summary:focus-visible { outline: 2px solid var(--accent-bright); outline-offset:
 .recovery-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); }
 .recovery-banner p { flex: 1 1 220px; margin: 0; color: var(--text-soft); font-size: 0.85rem; }
 .recovery-banner > button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); color: var(--text); cursor: pointer; }
+.share-controls { margin: 0 4px 16px; }
+.share-controls .mode-controls { margin-top: 8px; }
+.shared-banner > div:first-child { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+.shared-banner h2 { margin: 0 0 8px; font-size: 1rem; }
+.shared-banner p + p { margin-top: 8px; }
+.share-dialog label { display: block; margin-bottom: 8px; }
+.share-dialog input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--input); color: var(--text); }
+.share-dialog input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+@media print { .share-controls, .shared-banner { display: none !important; } }
 .search-controls select { min-width: 0; max-width: 100%; padding: 9px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--input); color: var(--text); }
 .command-results { max-height: 220px; overflow-y: auto; margin: 10px 0 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 9px; }
 .command-results li + li { border-top: 1px solid var(--border); }
