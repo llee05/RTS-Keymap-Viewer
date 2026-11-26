@@ -5,6 +5,7 @@ type Props = {
   presets: KeyboardPreset[]; preset: KeyboardPreset; editor: boolean; editing: boolean; bundled: boolean;
   busy: boolean; saving: boolean; storageAvailable: boolean; recoveryPending: boolean; dirty: boolean;
   canUndo: boolean; canRedo: boolean; validationErrors: string[];
+  sharedPreview?: boolean;
   pickerRef: RefObject<HTMLSelectElement | null>;
   onSelect: (id: string) => void; onNew: () => void; onBlank: () => void; onEdit: () => void;
   onAddHotkey: (trigger: HTMLButtonElement) => void; onCancel: (trigger: HTMLButtonElement) => void;
@@ -14,7 +15,7 @@ type Props = {
   onDelete: (trigger: HTMLButtonElement) => void; onPrint: () => void;
 };
 
-export function PresetControls({ presets, preset, editor, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete, onPrint }: Props) {
+export function PresetControls({ presets, preset, editor, editing, bundled, busy, saving, storageAvailable, recoveryPending, dirty, canUndo, canRedo, validationErrors, sharedPreview = false, pickerRef, onSelect, onNew, onBlank, onEdit, onAddHotkey, onCancel, onSave, onUndo, onRedo, onFieldChange, onImport, onExport, onExportAll, onDelete, onPrint }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const editingBlocked = busy || !storageAvailable || recoveryPending;
   const invalidName = !preset.name.trim();
@@ -26,7 +27,8 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
         <div className="preset-picker">
           <label htmlFor="preset">Active layout</label>
           <div className="select-wrap">
-            <select id="preset" ref={pickerRef} value={preset.id} disabled={editing || busy} onChange={(event) => onSelect(event.target.value)}>
+            <select id="preset" ref={pickerRef} value={sharedPreview ? '__shared__' : preset.id} disabled={editing || busy} onChange={(event) => onSelect(event.target.value)}>
+              {sharedPreview && <option value="__shared__" disabled>Shared: {preset.name}</option>}
               {presets.map((current) => <option key={current.id} value={current.id}>{editor && editing && current.id === preset.id ? preset.name || 'Unnamed preset' : current.name}</option>)}
               {editor && editing && !presets.some((current) => current.id === preset.id) && <option value={preset.id}>{preset.name || 'Unnamed preset'}</option>}
             </select>
@@ -35,7 +37,7 @@ export function PresetControls({ presets, preset, editor, editing, bundled, busy
         </div>
         {!editor && <div className="mode-controls" aria-label="Preset actions">
           <button type="button" className="secondary-button" disabled={busy} onClick={onPrint}>Print reference</button>
-          <button type="button" disabled={editingBlocked || editing} onClick={onBlank}>New preset</button>
+          <button type="button" disabled={editingBlocked || editing || sharedPreview} onClick={onBlank}>New preset</button>
         </div>}
         {editor && <div className="mode-controls" aria-label="Preset actions">
           <button type="button" disabled={editingBlocked} onClick={(event) => onAddHotkey(event.currentTarget)}>Add hotkey</button>

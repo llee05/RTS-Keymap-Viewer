@@ -14,6 +14,7 @@ A browser-based keyboard reference for real-time strategy games, built with Reac
 - Custom presets cloned from the active layout or created blank, with editable names, game labels, commands, combinations, categories, contexts, sources, and versions.
 - Undo/redo, an unsaved indicator, discard confirmation, browser exit warnings, and recoverable drafts.
 - Remembered active layouts and a bundled reference fallback with storage retry.
+- Compressed URL sharing with a read-only preview and explicit import into the local library.
 - JSON import/export, full-library backups, and custom-preset deletion with confirmation.
 - Accessible key editor dialogs with keyboard focus containment, Escape dismissal, and focus restoration.
 - Browser-local persistence through IndexedDB.
@@ -28,7 +29,7 @@ Editing a preset changes the reference board. Configure the actual game bindings
 2. To customize existing assignments, open **Edit → Clone preset**. To start with an empty keyboard of the same shape, select **New preset** on View.
 3. Name the draft, add commands with **Add hotkey** or select individual keys to edit, then select **Save preset**.
 4. Print a cheat sheet as described in [Using the viewer](#using-the-viewer).
-5. Use **Edit → More preset actions → Export preset** to download a backup. Saved layouts stay in this browser; import the JSON backup to move them elsewhere.
+5. Use **Edit → More preset actions → Export preset** to download a backup. Saved layouts stay in this browser; import the JSON backup to move them elsewhere, or use **View → Share layout → Copy share link**.
 
 ## Using the viewer
 
@@ -62,6 +63,16 @@ Accent-coloured markers indicate assigned commands; the second legend colour ind
 Use **Colour theme** in the header to choose **Midnight** (cool blue), **Forest** (sage and green), or **Ember** (warm amber). Each dark palette styles the workspace, keycaps, search results, dialogs, and tooltips. Assignment and combination markers have distinct colours shown in the legend, with the same shapes and positions in every theme.
 
 Your choice is remembered in localStorage (`rts-keymap-theme`) for this browser and origin, independently of presets and backups. Clearing site storage restores Midnight. If browser storage is unavailable, you can still switch themes for the current session.
+
+### Sharing layouts
+
+On **View**, expand **Share layout** and select **Copy share link** to share the displayed saved layout, including commands, combinations, key sizes, and source/version metadata. An open draft stays separate: save it first to share its changes. The app announces when the link is copied. If clipboard access fails or is unavailable, a dialog provides a selected, copyable **Share link** field.
+
+Opening a shared link displays the layout immediately in View, with working search, command tooltips, and printing. The **Import shared layout** banner offers **Save to library**, which creates a new custom preset with a fresh ID, or **Dismiss**, which returns to your previous active layout. Previewing never writes the shared layout to IndexedDB or replaces a draft or recovery. Saving is disabled while storage loads, storage is unavailable, or a draft/recovery is pending. Finish or discard that work in Edit, or retry storage, then reopen the link. Selecting another preset or switching to View/Edit exits the preview; browser back/forward restores the corresponding screen or shared preview.
+
+Sharing uses native gzip compression and URL-safe base64 in a versioned fragment (`#share=v1.<payload>`); there is no server, account, or uploaded layout. Anyone with the link can read its contents. Compression is not encryption. Shared layouts use the same validation and normalization as JSON imports, including the 2 MiB uncompressed limit; decoding stops as soon as that limit is exceeded. Invalid, incomplete, unsupported, or corrupt links show an error while retaining your saved layout. Older browsers without native compression/decompression show guidance to use JSON backups instead.
+
+Links are limited to 16,000 characters, including the hosting address. Very large layouts may exceed that limit or be truncated by a messaging service; use **Export preset** under **Share layout** (or **Edit → More preset actions**) to share JSON instead. Sharing, previewing, and JSON export work even when IndexedDB is unavailable.
 
 ### Backups and preset management
 
@@ -98,7 +109,7 @@ Open the URL printed by Vite, normally `http://localhost:5173/RTS-Keymap-Viewer/
 | --- | --- |
 | `npm run dev` | Start the development server with hot module replacement. |
 | `npm run lint` | Run ESLint. |
-| `npm test` | Run Node regression tests for validation, search, draft isolation, preset import/export, and storage transaction handling. |
+| `npm test` | Run Node regression tests for validation, search, draft isolation, preset import/export and URL sharing, and storage transaction handling. |
 | `npm run test:coverage` | Run the unit suite and report coverage for the data modules it exercises. |
 | `npm run test:e2e` | Run Playwright regression tests against the production build in desktop and mobile Chromium. |
 | `npx tsc -b` | Check the application and Vite configuration types. |
@@ -155,6 +166,8 @@ For documentation-only changes, check the documented commands, paths, and behavi
 | `src/components/KeyPicker.tsx` | Searchable on-screen selection of shortcut participants. |
 | `src/data/hotkeyCapture.ts` | Physical key matching, combination conflict detection, and recorded draft assignments. |
 | `src/data/presetTransfer.ts` | Backup serialization and validation of imported JSON. |
+| `src/data/presetShare.ts` | Versioned gzip/base64url sharing with bounded decoding and import validation. |
+| `src/components/ShareControls.tsx` | Collapsed sharing and JSON export actions on View. |
 | `tests/*.test.ts` | Node regression checks for data and draft behavior. |
 | `tests/browser/*.spec.ts` | Desktop/mobile interaction, screen navigation, themes, recovery, backup, persistence, error, and accessibility regressions. |
 | `playwright.config.ts` | Desktop/mobile Chromium projects and the test preview server. |
